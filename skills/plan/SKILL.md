@@ -122,7 +122,8 @@ concurrency reasoning, review/validation detail, and edge cases.
    results. Only when every acceptance criterion is met:
    - set `status: review`,
    - bump `updated:`,
-   - commit, and hand the branch back to the tech lead.
+   - commit (see [Git conventions](#git-conventions) below), and hand the
+     branch back to the tech lead.
 6. Do not create new tickets, and do not set `status: done` — that is the
    reviewer + tech lead's job. If you discover missing work, note it in
    `## Notes` for the tech lead to triage.
@@ -143,11 +144,59 @@ concurrency reasoning, review/validation detail, and edge cases.
    date: 2025-07-29
    <what you checked and the result>
    ```
-4. If `approved`: leave `status: review`, commit, hand back to the tech lead
-   to merge.
+4. If `approved`: leave `status: review`, commit (see [Git conventions](#git-conventions) below),
+   hand back to the tech lead to merge.
 5. If `changes-requested`: set `verdict: changes-requested`, **flip
-   `status: in_progress`**, record concretely what failed, commit, and hand
-   back. The tech lead re-dispatches the worker.
+   `status: in_progress`**, record concretely what failed, commit (see
+   [Git conventions](#git-conventions) below), and hand back. The tech lead
+   re-dispatches the worker.
+
+## Git conventions
+
+These conventions ensure the git history accurately reflects who worked on
+what. They apply to **all** role workflows (worker, reviewer, tech lead).
+
+### Author identity
+
+Use the repo's default git identity for the commit **author** — this is the
+human who owns the repo and session. Do not override `user.name` / `user.email`
+with an agent identity.
+
+**Why:** The git history should credit the human as the author (they own the
+repo, the machine, and the session). An agent overriding the author field
+erases that attribution.
+
+### Co-Authored-By trailer
+
+When an agent (worker, reviewer, or any subagent) creates or finishes a change,
+add a `Co-Authored-By` trailer as the last line of the commit message body:
+
+```
+<descriptive subject line>
+
+Co-Authored-By: <agent-name>
+```
+
+Use your agent identity — the same `reviewer: <your id>` you put in the review
+block, or the task worker's configured name. Leave the email portion out unless
+you have a stable, recognized agent address.
+
+**Why:** `Co-Authored-By` is the standard Git/GitHub mechanism for
+acknowledging co-contributors. It records the agent's role in the commit log
+and is surfaced by GitHub's UI, without erasing the human author. This is the
+same mechanism GitHub uses when multiple people collaborate on a commit via
+pull requests.
+
+### Commit messages
+
+Use conventional-commit style: start with a lowercase area prefix in
+parentheses when relevant, keep the subject under 72 characters.
+
+```
+plan(task-slug): brief description
+
+Co-Authored-By: worker-1
+```
 
 ## Ticket format
 

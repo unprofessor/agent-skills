@@ -52,13 +52,16 @@ shows up as "ready for review" immediately, without waiting for merge.
 
 1. **Worker completes** implementation and self-validates every `## Acceptance`
    criterion, recording what was checked in a `## Validation` section (commands
-   + results). Sets `status: review`. Commits on the task branch.
+   + results). Sets `status: review`. Commits on the task branch (see
+   [Git conventions](#git-conventions) below).
 2. **Reviewer (fresh context)** reads the task, the diff, and `## Validation`,
    then **runs the acceptance checks itself** in the worktree. It edits only
    the task file:
-   - `verdict: approved` → leaves `status: review`, adds `## Review`, commits.
+   - `verdict: approved` → leaves `status: review`, adds `## Review`, commits
+     (see [Git conventions](#git-conventions) below).
    - `verdict: changes-requested` → adds `## Review`, flips `status: in_progress`,
-     commits. The tech lead re-dispatches the worker.
+     commits (see [Git conventions](#git-conventions) below). The tech lead
+     re-dispatches the worker.
 3. **Tech lead merges** with `merge-task.sh`, which requires both
    `status: review` **and** an approved `## Review` verdict, then flips the
    task to `done` on trunk as part of the merge.
@@ -119,7 +122,8 @@ by workers on a task branch.
 3. Edit only your task file + code.
 4. Implement; log to `## Notes`.
 5. Self-validate every `## Acceptance` item; record `## Validation`; set
-   `status: review`; commit; hand back.
+   `status: review`; commit (see [Git conventions](#git-conventions) below);
+   hand back.
 
 ### Review (reviewer, fresh context, in the worktree)
 
@@ -127,7 +131,7 @@ by workers on a task branch.
 2. Run the acceptance checks yourself.
 3. Edit only the task file's `## Review`: `verdict: approved` (leave
    `status: review`) or `verdict: changes-requested` (flip `status: in_progress`).
-4. Commit; hand back.
+4. Commit (see [Git conventions](#git-conventions) below); hand back.
 
 ### Integration (tech lead, on trunk)
 
@@ -178,6 +182,53 @@ by workers on a task branch.
 - **No trunk yet / fresh repo.** `scripts/new-ticket.sh` writes to the working
   tree; commit `.plan/` to trunk before any `claim.sh` so workers branch from a
   backlog that exists.
+
+## Git conventions
+
+These conventions ensure the git history accurately reflects who worked on
+what. They apply to **all** role workflows (worker, reviewer, tech lead).
+
+### Author identity
+
+Use the repo's default git identity for the commit **author** — this is the
+human who owns the repo and session. Do not override `user.name` / `user.email`
+with an agent identity.
+
+**Why:** The git history should credit the human as the author (they own the
+repo, the machine, and the session). An agent overriding the author field
+erases that attribution.
+
+### Co-Authored-By trailer
+
+When an agent (worker, reviewer, or any subagent) creates or finishes a change,
+add a `Co-Authored-By` trailer as the last line of the commit message body:
+
+```
+<descriptive subject line>
+
+Co-Authored-By: <agent-name>
+```
+
+Use your agent identity — the same `reviewer: <your id>` you put in the review
+block, or the task worker's configured name. Leave the email portion out unless
+you have a stable, recognized agent address.
+
+**Why:** `Co-Authored-By` is the standard Git/GitHub mechanism for
+acknowledging co-contributors. It records the agent's role in the commit log
+and is surfaced by GitHub's UI, without erasing the human author. This is the
+same mechanism GitHub uses when multiple people collaborate on a commit via
+pull requests.
+
+### Commit messages
+
+Use conventional-commit style: start with a lowercase area prefix in
+parentheses when relevant, keep the subject under 72 characters.
+
+```
+plan(task-slug): brief description
+
+Co-Authored-By: worker-1
+```
 
 ## What this scheme deliberately does not have
 
