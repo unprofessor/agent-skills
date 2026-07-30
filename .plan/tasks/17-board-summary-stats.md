@@ -4,7 +4,7 @@ aliases: [board-summary-stats]
 kind: task
 parent: board-improvements
 title: Add ticket count per status to board.sh summary
-status: todo
+status: in_progress
 assignee: null
 created: 2026-07-30
 updated: 2026-07-30
