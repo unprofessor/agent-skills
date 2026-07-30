@@ -2,7 +2,7 @@
 id: self-tests
 aliases: [self-tests]
 kind: story
-parent: retro-hardening
+parent: hotcell-firewall-hardening
 title: Close planr's own script self-test gaps
 status: todo
 assignee: null

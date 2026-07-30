@@ -2,7 +2,7 @@
 id: merge-gate-verify
 aliases: [merge-gate-verify]
 kind: story
-parent: retro-hardening
+parent: hotcell-firewall-hardening
 title: Merge gate runs the project's verify command, not just the reviewer's verdict
 status: todo
 assignee: null

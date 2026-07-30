@@ -1,8 +1,8 @@
 ---
-id: retro-hardening
-aliases: [retro-hardening]
+id: hotcell-firewall-hardening
+aliases: [hotcell-firewall-hardening]
 kind: epic
-title: Harden planr from the hotcell firewall retro + add a retrospective phase
+title: Harden planr from the hotcell firewall retro findings
 status: todo
 assignee: null
 created: 2026-07-30
@@ -15,8 +15,8 @@ depends_on: [port-scripts-to-typescript]
 
 Feed the lessons from the first real planr run (the hotcell `network-firewall`
 story, 4 tasks; retro at `../hotcell/.plan/retros/01-planr-hotcell-firewall.md`)
-back into planr as concrete improvements, and add a retrospective phase so
-future runs capture their own lessons the same way.
+back into planr as concrete improvements to the merge gate, worker
+resumption, review rigor, waiver handling, and self-tests.
 
 ## Scope
 
@@ -30,9 +30,6 @@ future runs capture their own lessons the same way.
 - **Formal done-with-waiver** — a `## Waiver` block convention (greppable,
   not buried in story notes) + a lint check + a board cue, so `done` stays
   meaningful when an acceptance box is honestly unchecked.
-- **Retrospective phase** — a `retros/` directory, a retro template, a
-  `new-retro.sh` scaffolder, and a PROCESS.md section describing when/how to
-  run a retro and feed improvements back as new epics.
 - **Self-test coverage** — close planr's own script self-test gaps (the
   `board.sh` `+`-prefix regression recurred after a skill rebuild because
   nothing tested it).
@@ -46,6 +43,9 @@ future runs capture their own lessons the same way.
   honest partial completion). No changes.
 - **Running the hotcell firewall story again.** This epic hardens the tool,
   it does not re-execute the mission that produced the retro.
+- **The retrospective phase itself** — that's a separate epic,
+  [[plan-retrospectives]], since it's a process addition rather than a
+  fix to a specific finding.
 
 ## Notes
 

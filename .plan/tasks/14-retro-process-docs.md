@@ -16,7 +16,7 @@ depends_on: [retro-template-and-script]
 
 Document the retrospective phase: when to run one, who writes it, what it
 covers, and how improvements feed back as new epics. Make the kind of
-artifact that produced [[retro-hardening]] a normal part of the plan
+artifact that produced [[hotcell-firewall-hardening]] a normal part of the
 process.
 
 ## Context
@@ -36,13 +36,14 @@ improvement becomes a task under a hardening epic.
   it (it's a tech-lead artifact, like ticket creation); **what** — the
   template structure, emphasizing the within/without-control split; **how
   it feeds back** — priority-ordered improvements become tasks under a new
-  hardening epic (cross-reference [[retro-hardening]] as the worked
-  example).
+  hardening epic (cross-reference [[hotcell-firewall-hardening]] as the
+  worked example).
 - [ ] SKILL.md gains a short "Retrospective" subsection (under the workflow
   or as a peer to "Ticket format") pointing at `scripts/new-retro.sh` and
   the PROCESS.md section.
-- [ ] The epic story [[retrospective-phase]] and this task are referenced as
-  the example of "improvements feed back as a hardening epic."
+- [ ] The epic [[plan-retrospectives]] and its parent story
+  [[retrospective-phase]] are referenced as the example of "improvements
+  feed back as a hardening epic."
 - [ ] No code changes; `run-tests.sh` stays green.
 
 ## Notes

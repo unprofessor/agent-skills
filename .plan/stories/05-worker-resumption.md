@@ -2,7 +2,7 @@
 id: worker-resumption
 aliases: [worker-resumption]
 kind: story
-parent: retro-hardening
+parent: hotcell-firewall-hardening
 title: Resumption protocol for interrupted workers + incremental-progress discipline
 status: todo
 assignee: null

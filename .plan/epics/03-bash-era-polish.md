@@ -24,7 +24,7 @@ Polish the current bash-based planr scripts with quick, high-value improvements 
 
 - Changes to the ticket format, process, or role model (those are stable)
 - The TypeScript port itself (tracked in [[port-scripts-to-typescript]])
-- Retro-hardening features (verify hook, resume, waiver — tracked in [[retro-hardening]])
+- Retro-hardening features (verify hook, resume, waiver — tracked in [[hotcell-firewall-hardening]])
 
 ## Notes
 

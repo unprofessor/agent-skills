@@ -2,7 +2,7 @@
 id: retrospective-phase
 aliases: [retrospective-phase]
 kind: story
-parent: retro-hardening
+parent: plan-retrospectives
 title: Add a retrospective phase to the plan process
 status: todo
 assignee: null
@@ -14,10 +14,10 @@ depends_on: []
 
 ## Goal
 
-Make the kind of artifact that produced this very epic — a structured retro
-under `.plan/retros/` — a first-class part of the plan process, with a
-template, a scaffolder, and a PROCESS.md section on when to run one and how
-to feed improvements back as new epics.
+Make the kind of artifact that produced [[hotcell-firewall-hardening]] — a
+structured retro under `.plan/retros/` — a first-class part of the plan
+process, with a template, a scaffolder, and a PROCESS.md section on when to
+run one and how to feed improvements back as new epics.
 
 ## Context
 

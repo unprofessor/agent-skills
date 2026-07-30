@@ -2,7 +2,7 @@
 id: review-and-waiver
 aliases: [review-and-waiver]
 kind: story
-parent: retro-hardening
+parent: hotcell-firewall-hardening
 title: Reviewer flakiness guidance + formal done-with-waiver path
 status: todo
 assignee: null
