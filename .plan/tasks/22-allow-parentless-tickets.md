@@ -85,6 +85,6 @@ parentless nodes already appear with `-` parent.
   - the doc rewrite). `board.ts` is untouched — it already renders by
   directory.
 - If the port stalls and parentless tickets are needed sooner, a bash
-  stopgap under [[bash-era-polish]] is the escape hatch (edit `lint.sh` +
+  stopgap under [[supplementary-tooling]] is the escape hatch (edit `lint.sh` +
   `new-ticket.sh` directly); default is port-time to avoid touching the
   bash the port deletes.

@@ -18,7 +18,7 @@ Add a “Troubleshooting” section to SKILL.md covering common issues that aris
 
 ## Context
 
-Parent story: [[doc-improvements]] under [[bash-era-polish]]. The existing documentation covers the happy path (plan → create → claim → implement → review → merge) thoroughly, but has no section for what to do when things go wrong: merge conflicts, stale worktrees, interrupted workers, reviewer can’t find the worktree, etc. These are documented across scripts and edge cases in PROCESS.md but not gathered in one troubleshooting reference.
+Parent story: [[doc-improvements]] under [[supplementary-tooling]]. The existing documentation covers the happy path (plan → create → claim → implement → review → merge) thoroughly, but has no section for what to do when things go wrong: merge conflicts, stale worktrees, interrupted workers, reviewer can’t find the worktree, etc. These are documented across scripts and edge cases in PROCESS.md but not gathered in one troubleshooting reference.
 
 ## Acceptance
 

@@ -18,7 +18,7 @@ Append a summary section to the end of board.sh output showing ticket counts bro
 
 ## Context
 
-Parent story: [[board-improvements]] under [[bash-era-polish]]. The current board.sh lists all tickets in epics, stories, and tasks sections, plus in-flight branches, but never aggregates. A project with 50+ tickets requires manual tallying to answer “how many are done?” or “what’s in review?”.
+Parent story: [[board-improvements]] under [[supplementary-tooling]]. The current board.sh lists all tickets in epics, stories, and tasks sections, plus in-flight branches, but never aggregates. A project with 50+ tickets requires manual tallying to answer “how many are done?” or “what’s in review?”.
 
 Add the summary after the in-flight section, counting ALL tickets (epics + stories + tasks) across both trunk and branches.
 
