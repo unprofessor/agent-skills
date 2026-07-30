@@ -4,7 +4,7 @@ aliases: [board-summary-stats]
 kind: task
 parent: board-improvements
 title: Add ticket count per status to board.sh summary
-status: in_progress
+status: review
 assignee: null
 created: 2026-07-30
 updated: 2026-07-30
@@ -38,3 +38,22 @@ Add the summary after the in-flight section, counting ALL tickets (epics + stori
 - Reuse the `fm_field` awk function already in board.sh for status extraction
 - Can either parse all files twice (once for rows, once for summary) or refactor to accumulate counts during the main rendering loop
 - The simpler approach: after the in-flight section, re-scan trunk files and count statuses, then add branch counts from the in-flight scan (already parsed)
+
+## Validation
+
+Implemented summary section at end of board.sh output. Verified:
+
+- Ran `./skills/planr/scripts/board.sh` in the real project repo — output ends with `## summary` section showing 6 status rows (total, todo, in_progress, review, done, blocked)
+- Counts correctly skip trunk entries for in-flight tasks (use branch status instead) — verified 3 in-flight tasks (1 in_progress + 2 review) counted from branches
+- Zero-count statuses shown as `0` — verified blocked=0 in test fixture, done=0 in main repo
+- Blocked derivation works: tasks with unmet depends_on counted as blocked — main repo shows 19 blocked
+- Format uses aligned columns matching existing table style
+- Reuses same git operations (git-show, git-ls-tree) — no new git calls
+
+Tests:
+- Ran `tests/run-tests.sh` — all 49 tests pass (0 fail), including 3 new board summary assertions:
+  - board.sh exits 0
+  - output contains `## summary` section
+  - summary has 6 status rows
+  - total = 5 (test fixture)
+  - done = 1 (test fixture)
