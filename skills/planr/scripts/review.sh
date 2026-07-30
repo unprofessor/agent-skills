@@ -9,6 +9,10 @@
 # Intended to be handed to a fresh-context review agent.
 set -euo pipefail
 
+here="$(cd "$(dirname "$0")" && pwd)"
+. "$here/_lock.sh"
+planr_lock_shared
+
 slug="${1:?task slug required}"
 trunk="${2:-${PLANR_TRUNK:-main}}"
 plan="${PLANR_DIR:-.plan}"

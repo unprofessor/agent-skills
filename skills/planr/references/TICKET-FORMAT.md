@@ -15,9 +15,11 @@
 - **`slug`** — the human handle: short, kebab-case, no spaces, no slashes.
   Example: `http-connect-proxy`. The slug is the identity; frontmatter `id`
   repeats it for grep.
-- Uniqueness is guaranteed by the leader being the sole creator (it can
-  just `ls` the directory) and checked by `scripts/lint.sh` (a duplicate slug
-  anywhere in the backlog is an error).
+- Uniqueness is guaranteed by the leader being the sole creator and checked
+  by `scripts/lint.sh` (a duplicate slug anywhere in the backlog is an error).
+  Prefix allocation is serialized with a `flock` (see
+  [../SKILL.md#concurrency](../SKILL.md#concurrency)), so even parallel
+  `new-ticket.sh` calls produce sequential `NN`s rather than colliding.
 
 ## Frontmatter (YAML)
 

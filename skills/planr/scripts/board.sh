@@ -11,6 +11,10 @@
 # before merge).
 set -euo pipefail
 
+here="$(cd "$(dirname "$0")" && pwd)"
+. "$here/_lock.sh"
+planr_lock_shared
+
 trunk="${1:-${PLANR_TRUNK:-main}}"
 plan="${PLANR_DIR:-.plan}"
 

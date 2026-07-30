@@ -4,11 +4,14 @@
 # Usage: new-ticket.sh <kind> <slug> <title> [parent-slug]
 # Env:   PLANR_DIR (default .plan)
 #
-# Writes <plan>/<kind-plural>/<NN>-<slug>.md with frontmatter filled and
+# Writes <planr>/<kind-plural>/<NN>-<slug>.md with frontmatter filled and
 # prints the path. The caller then fills the body and commits. The parent slug
 # is required for stories and tasks (and must already exist); ignored for
 # epics. Runs lint.sh afterwards, informationally, on stderr.
 set -euo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+. "$here/_lock.sh"
 
 kind="${1:?kind required: epic|story|task}"
 slug="${2:?slug required}"
@@ -53,13 +56,7 @@ fi
 
 dir="$plan/$subdir"
 mkdir -p "$dir"
-last=$(ls "$dir" 2>/dev/null | grep -oE '^[0-9]+' | sort -n | tail -1 || true)
-nn=$(printf '%02d' $((10#${last:-0} + 1)))
-path="$dir/${nn}-${slug}.md"
 
-[[ -e "$path" ]] && { echo "already exists: $path" >&2; exit 1; }
-
-here="$(cd "$(dirname "$0")" && pwd)"
 template="$here/../templates/${kind}.md"
 date="$(date +%F)"
 
@@ -71,6 +68,20 @@ slug_e=$(repl_escape "$slug")
 title_e=$(repl_escape "$title")
 parent_e=$(repl_escape "$parent")
 
+# Prefix allocation is a read-modify-write on $dir. Serialize it across
+# concurrent new-ticket.sh invocations — an agent scaffolding a whole epic
+# will fire several in one parallel tool block, and without a lock each sees
+# the same `ls` and computes the same NN, producing colliding sort-hints
+# (different slugs, so the [[ -e ]] guard never trips). The exclusive lock
+# makes allocate-and-create atomic.
+planr_lock_exclusive
+
+last=$(ls "$dir" 2>/dev/null | grep -oE '^[0-9]+' | sort -n | tail -1 || true)
+nn=$(printf '%02d' $((10#${last:-0} + 1)))
+path="$dir/${nn}-${slug}.md"
+
+[[ -e "$path" ]] && { echo "already exists: $path" >&2; exit 1; }
+
 # Copy first, then edit only the destination (never the template).
 cp "$template" "$path"
 perl -i -pe "
@@ -79,6 +90,20 @@ perl -i -pe "
   s|__PARENT__|$parent_e|g;
   s|__DATE__|$date|g;
 " "$path"
+
+# Defensive: the lock makes a prefix collision impossible, but a manual edit
+# or a future regression that bypasses the lock could still land two files on
+# the same NN. Re-scan and bail loudly rather than ship a colliding sort-hint.
+collide=$(ls "$dir" | grep -cE "^${nn}-" || true)
+if [[ "$collide" -ne 1 ]]; then
+  echo "internal error: prefix ${nn} is shared by ${collide} files in ${dir} after creating ${path}" >&2
+  exit 1
+fi
+
+# Release the exclusive lock before the informational lint so lint can take
+# its own shared lock (no self-deadlock) and so we don't block other writers
+# during a full backlog scan.
+exec 9>&-
 
 # Informational backlog-wide lint (dangling refs, cycles) on stderr. The new
 # ticket itself is valid by construction; pre-existing issues don't block it.

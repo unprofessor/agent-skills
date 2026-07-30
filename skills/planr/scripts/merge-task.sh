@@ -13,6 +13,9 @@
 # guidance, and leaves the worktree + branch intact for the worker to rebase.
 set -euo pipefail
 
+here="$(cd "$(dirname "$0")" && pwd)"
+. "$here/_lock.sh"
+
 slug="${1:?task slug required}"
 wt="${2:-../wt-$slug}"
 trunk="${3:-${PLANR_TRUNK:-main}}"
@@ -47,6 +50,11 @@ if [[ "$verdict" != "approved" ]]; then
   echo "assign a reviewer: scripts/review.sh $slug" >&2
   exit 1
 fi
+
+# Mutate trunk: checkout, merge, flip to done, commit, clean up. Take an
+# exclusive lock so this working-tree mutation doesn't race a concurrent
+# new-ticket.sh write or a board/review reader mid-scan.
+planr_lock_exclusive
 
 git checkout "$trunk" >/dev/null 2>&1
 

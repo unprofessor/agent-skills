@@ -25,8 +25,19 @@
 # Prints nothing and exits 0 on a clean backlog.
 set -euo pipefail
 
+here="$(cd "$(dirname "$0")" && pwd)"
+. "$here/_lock.sh"
+
 ref="${1:-}"
 plan="${PLANR_DIR:-.plan}"
+
+# Working-tree mode reads $plan from the checkout; coordinate with writers
+# (new-ticket.sh, merge-task.sh) via a shared lock. Ref mode reads a git
+# snapshot (and is called by claim.sh, which already holds a lock), so it
+# needs no lock.
+if [[ -z "$ref" ]]; then
+  planr_lock_shared
+fi
 
 errors=0
 warnings=0
@@ -119,9 +130,6 @@ while IFS= read -r f; do
   # "depends_on:") parses as empty here AND in claim.sh — the deps would
   # silently stop gating. Must be loud: that is the one failure mode the
   # dependency graph cannot survive.
-  # NB: like fm_field/fm_list, the awk toggles on any ^---$ line, so a body
-  # thematic break re-enters frontmatter parsing — acceptable since ticket
-  # bodies don't use raw `---` and the real field always precedes any body.
   if printf '%s' "$blob" | awk '
        /^---$/ { f = !f; next }
        f && /^depends_on:[[:space:]]*$/ { bad = 1; exit }

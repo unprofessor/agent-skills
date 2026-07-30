@@ -11,6 +11,10 @@
 # worktree path (only).
 set -euo pipefail
 
+here="$(cd "$(dirname "$0")" && pwd)"
+. "$here/_lock.sh"
+planr_lock_shared
+
 slug="${1:?task slug required}"
 wt="${2:-../wt-$slug}"
 trunk="${3:-${PLANR_TRUNK:-main}}"

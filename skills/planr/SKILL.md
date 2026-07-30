@@ -15,9 +15,12 @@ git-tracked `.plan/` directory it creates in the repo root.
   developer. It is the **single writer** to the backlog: it creates and edits
   epic/story/task files on trunk, splits and reprioritizes work, dispatches
   workers and reviewers, merges approved task branches into trunk, and
-  regenerates the board. It does **not** implement or review tasks. Because
-  planning is a single sequential session with the developer, ticket creation
-  has no race.
+  regenerates the board. It does **not** implement or review tasks. Planning
+  is a single session with the developer, but an agent scaffolding a whole
+  epic will rationally fire several `new-ticket.sh` calls in one parallel
+  tool block — so the scripts serialize prefix allocation and trunk mutation
+  with a `flock` (see [Concurrency](#concurrency) below) rather than rely on
+  the session being strictly sequential.
 - **Worker** — an agent that implements **one task** in a dedicated git
   worktree branched off trunk. It edits only its own task file plus code,
   self-validates against the task's `## Acceptance` criteria, records a
@@ -44,7 +47,9 @@ parent to record child progress** —
 roll-up is *derived* by scanning child files on trunk at read time. There is
 no central mutable index or board file that gets rewritten on every change.
 Claiming a task = branching a worktree; the branch *is* the claim, so no
-locks are needed.
+claim locks are needed. (The scripts do use a `flock` internally to serialize
+prefix allocation and trunk mutation — see [Concurrency](#concurrency) — but
+that is an implementation detail, not a coordination primitive agents manage.)
 
 ## Trunk vs. worktree
 
@@ -105,6 +110,31 @@ review-ready work is visible before merge — no checkout required.
 
 See [references/PROCESS.md](references/PROCESS.md) for the full process,
 concurrency reasoning, review/validation detail, and edge cases.
+
+## Concurrency
+
+The claim mechanism needs no locks — a worktree branch *is* the claim, so two
+agents cannot both claim the same task. But two operations do mutate shared
+state in the working tree and need serialization:
+
+- **Prefix allocation** (`new-ticket.sh`) is a read-modify-write on a kind's
+  directory: `ls` for the highest `NN`, then write `NN+1`. Without a lock,
+  parallel invocations (an agent scaffolding a whole epic in one tool block)
+  all read the same `ls` and all compute the same `NN`, producing colliding
+  sort-hints — different slugs, so the existence guard never trips.
+- **Trunk mutation** (`merge-task.sh`) checks out trunk, merges, flips status,
+  and commits; it must not race a reader mid-scan or another writer.
+
+So the scripts share a single `flock` on `$(git rev-parse --git-common-dir)/planr.lock`:
+writers (`new-ticket.sh`, `merge-task.sh`) take an **exclusive** lock for their
+critical section; readers (`board.sh`, `review.sh`, `claim.sh`, working-tree
+`lint.sh`) take a **shared** lock so they see a consistent snapshot. `flock` is
+from util-linux (standard on Linux). The lock file lives in the git common dir,
+shared across worktrees and never committed. `new-ticket.sh` also re-scans
+after writing and bails if its `NN` is no longer unique — a defensive check
+against manual edits or a future regression that bypasses the lock. See
+[references/PROCESS.md](references/PROCESS.md#concurrency-notes) for the full
+reasoning.
 
 ## Worker workflow
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end tests for the plan skill scripts, run in a throwaway git repo.
+# End-to-end tests for the planr skill scripts, run in a throwaway git repo.
 #
 # Usage: tests/run-tests.sh [sandbox-dir]
 #        With no argument, uses a fresh mktemp dir (removed on success, kept
@@ -172,6 +172,46 @@ contains "  ...but surfaces them on stderr" "ghost-task" "$errf"
 contains "  ...and stdout stays just the path" ".plan/tasks/03-another.md" "$out"
 if [[ $(wc -l <"$out") -eq 1 ]]; then pass=$((pass+1)); echo "PASS: stdout is exactly one line";
 else fail=$((fail+1)); echo "FAIL: stdout polluted"; cat "$out"; fi
+
+# --- concurrent prefix allocation: parallel new-ticket.sh must not collide ---
+# Simulate an agent scaffolding a whole epic in one parallel tool block: fire
+# N new-ticket.sh invocations at once. Without the flock they'd all read the
+# same `ls` and all compute NN=03, producing three 03-<slug>.md files. With
+# the exclusive lock they serialize to 03,04,05. (Separate stdout/stderr so
+# the informational lint on stderr doesn't pollute the one-line path check.)
+sed -i 's/^depends_on: \[ghost-task\]/depends_on: [http-proxy]/' .plan/tasks/02-wire-cli.md
+git checkout -q .plan/tasks/03-another.md 2>/dev/null || rm -f .plan/tasks/03-another.md
+
+pids=()
+"$skill/scripts/new-ticket.sh" task para-a "Parallel A" net-firewall >"$root/a.out" 2>"$root/a.err" &
+pids+=($!)
+"$skill/scripts/new-ticket.sh" task para-b "Parallel B" net-firewall >"$root/b.out" 2>"$root/b.err" &
+pids+=($!)
+"$skill/scripts/new-ticket.sh" task para-c "Parallel C" net-firewall >"$root/c.out" 2>"$root/c.err" &
+pids+=($!)
+rc=0
+for p in "${pids[@]}"; do wait "$p" || rc=1; done
+check "all 3 parallel new-ticket calls exited 0" 0 $rc
+
+# Each stdout must be exactly one path line (the defensive post-write check
+# runs inside each, so a false-positive there would make an exit non-zero or
+# swallow the echo — caught above and here).
+bad=0
+for o in "$root/a.out" "$root/b.out" "$root/c.out"; do
+  [[ $(wc -l <"$o") -eq 1 ]] || bad=1
+done
+check "each parallel stdout is exactly one line" 0 $bad
+
+# The three new task prefixes must be distinct (no collision). They land in
+# {03,04,05} in some order — the lock serializes allocation.
+new_prefixes=$(ls .plan/tasks | grep -oE '^[0-9]+-para-[abc]' | grep -oE '^[0-9]+' | sort -u)
+count=$(printf '%s\n' "$new_prefixes" | grep -c . || true)
+if [[ "$count" -eq 3 ]]; then pass=$((pass+1)); echo "PASS: parallel prefixes are 3 distinct values";
+else fail=$((fail+1)); echo "FAIL: parallel prefixes collided ($count distinct): $(tr '\n' ' ' <<<"$new_prefixes")"; ls .plan/tasks; fi
+
+# The newly created tickets must pass lint (valid frontmatter, no dup slugs).
+"$skill/scripts/lint.sh" >"$out" 2>&1
+check "lint clean after parallel batch" 0 $?
 
 echo
 echo "=== $pass passed, $fail failed ==="

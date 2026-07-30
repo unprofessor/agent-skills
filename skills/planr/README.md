@@ -3,8 +3,10 @@
 Trunk-based planning and backlog management for multi-agent development.
 
 Planr turns a git repo into a lightweight ticket board with **no database, no
-server, and no lock files**. Tickets are markdown files under `.plan/`; the
-git trunk is the board; a worktree branch *is* the claim on a task. Three
+server, and no claim locks**. Tickets are markdown files under `.plan/`; the
+git trunk is the board; a worktree branch *is* the claim on a task. The
+scripts serialize prefix allocation and trunk mutation with an internal
+`flock` (an implementation detail, not something agents manage). Three
 agent roles — a **leader**, **workers**, and **reviewers** — cooperate so that
 any number of workers can run in parallel without ever editing the same file,
 and a task is only ever marked `done` after an independent reviewer re-runs its
@@ -19,7 +21,7 @@ acceptance checks.
 All three role names are *agent nouns* — the doer of the action.
 
 | Role | Context | Owns | Does not |
-| --- | --- | --- | --- |
+|---|---|---|---|
 | **Leader** | foreground, with you | the backlog: creates & edits tickets on trunk, sets `depends_on`, dispatches workers & reviewers, merges approved branches | implement or review tasks |
 | **Worker** | a worktree, one task | implements its task, self-validates against `## Acceptance`, sets `status: review` | create tickets, set `done` |
 | **Reviewer** | fresh context, one task | re-runs the acceptance checks itself, writes `## Review` with a `verdict` | edit code, set `done` |
@@ -81,7 +83,7 @@ agent runs them for you.
 ## Scripts
 
 | Script | Who | Purpose |
-| --- | --- | --- |
+|---|---|---|
 | `board.sh` | all | Read-only board: backlog from trunk + in-flight/review-ready from `plan/*` branches |
 | `lint.sh` | leader | Backlog checks: dangling `parent`/`depends_on`, duplicate slugs, dependency cycles (errors); unresolved `[[links]]` (warnings) |
 | `new-ticket.sh` | leader | Scaffold a ticket file with the next sort hint + slug; verifies the parent exists |
@@ -93,7 +95,7 @@ All scripts honor two environment variables, so the scheme works in any repo
 without editing the skill:
 
 | Var | Default | Meaning |
-| --- | --- | --- |
+|---|---|---|
 | `PLANR_TRUNK` | `main` | the trunk branch that holds the backlog |
 | `PLANR_DIR` | `.plan` | the backlog directory |
 

@@ -142,15 +142,30 @@ by workers on a task branch.
 
 ## Concurrency notes
 
-- **Claiming a task** = branching a worktree. No locks: two agents cannot both
-  write the same task file because they're in separate checkouts on separate
-  branches. `status: in_progress` is a record, not a coordination primitive.
-- **Ticket creation** is racy only if workers create tickets. They don't —
-  only the leader does, in a single sequential session.
+- **Claiming a task** = branching a worktree. No claim lock: two agents cannot
+  both write the same task file because they're in separate checkouts on
+  separate branches. `status: in_progress` is a record, not a coordination
+  primitive.
+- **Ticket creation** is serialized by a `flock`: `new-ticket.sh` takes an
+  exclusive lock around its read-`ls`-then-write so that parallel invocations
+  (an agent scaffolding a whole epic in one tool block) allocate sequential
+  `NN` sort-hints instead of colliding. A defensive post-write re-scan bails
+  loudly if the prefix is no longer unique. The leader is still the sole
+  creator — workers never create tickets.
+- **Trunk mutation** (`merge-task.sh`) takes the same exclusive lock for its
+  checkout-merge-flip-commit section so it doesn't race a writer or a reader
+  mid-scan.
+- **Readers** (`board.sh`, `review.sh`, `claim.sh`, working-tree `lint.sh`)
+  take a shared lock so they see a consistent snapshot; ref-mode `lint.sh`
+  reads a git snapshot (and is called by `claim.sh`, which already holds the
+  lock), so it takes none. The lock lives at
+  `$(git rev-parse --git-common-dir)/planr.lock`, shared across worktrees and
+  never committed. `flock` is from util-linux.
 - **Review is independent** by construction: the reviewer runs fresh-context
   and reads the worktree, so it is not influenced by the worker's session.
 - **Reading the board** is always safe: `git show` / `git branch` are
-  read-only and never block writers.
+  read-only; the shared lock coordinates with writers without blocking them
+  except for the brief critical section.
 
 ## Edge cases
 
@@ -183,11 +198,15 @@ by workers on a task branch.
 
 - **No central `index.md` / `board.md` as source of truth.** A board file is a
   derived view; if you commit one, treat it as a regenerable snapshot.
-- **No lock files or claim markers.** The branch is the claim.
+- **No claim locks or claim markers.** The branch is the claim. (The scripts
+  do use an internal `flock` to serialize prefix allocation and trunk
+  mutation — see [Concurrency notes](#concurrency-notes) — but that is an
+  implementation detail, not a coordination primitive agents manage.)
 - **No hierarchical filenames** (`E01/S02/T03`). Flat slugs per kind keep
   renames cheap and `git log` readable; the parent link lives in frontmatter.
-- **No worker-created tickets.** Creation is the leader's job, which makes
-  allocation race-free.
+- **No worker-created tickets.** Creation is the leader's job; the `flock`
+  in `new-ticket.sh` keeps prefix allocation sequential even when the leader
+  batches parallel scaffolding calls.
 - **No self-merge.** `done` requires an independent reviewer's approved
   verdict; the scripts enforce it.
 - **No load-bearing links.** Body `[[wiki-links]]` are soft references for
