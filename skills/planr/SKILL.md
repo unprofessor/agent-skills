@@ -230,6 +230,145 @@ All scripts honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 (creation guards, cross-story dependency gating, every lint class); run it
 after changing any script.
 
+## Troubleshooting
+
+### Merge conflict during `merge-task.sh`
+
+**Symptom:** `merge-task.sh` prints "merge conflict in: <file>" and aborts.
+**Cause:** Another task's branch merged since this worktree was cut, touching the same code.
+**Resolution:** The worktree and branch are preserved. Rebase onto fresh trunk:
+```bash
+cd $wt                        # the worktree path printed during merge-task
+# or find it: git worktree list
+git rebase main               # resolve conflicts, git add, git rebase --continue
+# then the leader re-runs: scripts/merge-task.sh <slug>
+```
+This is a real signal the tasks overlap — consider re-splitting the work if
+rebases keep hurting.
+
+---
+
+### Stale worktree after branch cleanup
+
+**Symptom:** A worktree directory exists but its branch was already merged
+or deleted. `git worktree list` shows the worktree but `git branch` does not.
+**Cause:** The merge succeeded but the worktree removal was interrupted
+(e.g., agent disconnected mid-merge).
+**Resolution:**
+```bash
+# Remove the stale worktree
+git worktree prune
+git worktree remove ../wt-<slug> -f   # if prune alone doesn't clear it
+```
+
+---
+
+### Worker interrupted mid-task
+
+**Symptom:** A worktree branch exists with `status: in_progress` but the
+worker agent disconnected. The leader needs to recover progress.
+**Resolution:**
+1. Read the task file in the worktree: `cat .plan/tasks/<NN>-<slug>.md` —
+   check the `## Notes` section for findings already logged.
+2. Check `git log` in the worktree for incremental commits the worker made.
+3. Check for uncommitted changes: `git status` in the worktree.
+4. Re-dispatch the same worker (or a fresh one) to the same worktree.
+   The worker picks up from `## Notes` and any staged/uncommitted work.
+
+The leader can also use `scripts/review.sh <slug>` (read-only) to inspect
+the branch without entering the worktree.
+
+---
+
+### Reviewer cannot find the worktree
+
+**Symptom:** The review agent says "I don't see the worktree" or "path
+not found."
+**Cause:** The leader dispatched the reviewer without the worktree path, or
+the reviewer is running in a different shell session.
+**Resolution:**
+```bash
+# The leader runs: scripts/review.sh <slug>
+# This prints the worktree path, branch, acceptance, and diff.
+#
+# Fallback if review.sh is unavailable:
+git worktree list
+```
+The worktree is always at `../wt-<slug>/` relative to the repo root.
+
+---
+
+### Dependency cycle detected
+
+**Symptom:** `scripts/lint.sh` prints:
+```
+depends_on cycle: A → B → C → A — nothing in the cycle can ever be claimed
+```
+**Cause:** Two or more tickets list each other in `depends_on`, forming a
+loop. Tickets in a cycle can never all be `done` because each waits on
+another.
+**Resolution:**
+1. Read the cycle path from the error (e.g., `http-connect → firewall → http-connect`).
+2. One of the edges is wrong — the dependency goes the opposite direction
+   or shouldn't exist.
+3. Edit `depends_on` on trunk for the offending ticket(s) to break the loop.
+4. Re-run `scripts/lint.sh` to confirm the cycle is gone.
+5. Commit the fix.
+
+---
+
+### Cross-platform sed issues
+
+**Symptom:** `scripts/lint.sh` or another script fails on macOS with
+"invalid flag" or unexpected output.
+**Cause:** BSD `sed` (macOS default) uses different flag syntax than GNU
+`sed` (Linux, WSL, Git for Windows). The scripts are written for GNU sed.
+**Resolution:**
+```bash
+# Install GNU sed
+brew install gnu-sed
+# Make it the default for sed calls
+export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
+```
+After this, `sed` invocations in scripts work as written. The scripts
+shipped with planr use GNU sed features (`-E` extended regex, `+` repetition)
+that BSD sed does not support.
+
+---
+
+### "refuse claim" — task has unfinished dependencies
+
+**Symptom:** `scripts/claim.sh` prints:
+```
+refuse claim: '<slug>' has unfinished depends_on: <list>
+resolve or complete these first, or have the leader update depends_on.
+```
+**Cause:** One or more of the task's `depends_on` prerequisites are not
+`status: done` on trunk.
+**Resolution:**
+- Check `scripts/board.sh` for the blockers' statuses.
+- Dispatch those tasks first, or ask the leader to update `depends_on` if
+the dependency is incorrect.
+
+---
+
+### "refuse merge" — task not in review or no approval
+
+**Symptom:** `scripts/merge-task.sh` prints:
+```
+refuse merge: task '<slug>' status is '<status>', must be 'review'
+# or:
+refuse merge: no approved review verdict on '<slug>'
+```
+**Cause:** The task hasn't been validated and flipped to `status: review`
+by the worker, or hasn't been reviewed and approved by an independent
+reviewer.
+**Resolution:**
+- If status isn't `review`: the worker must self-validate and set
+  `status: review` first.
+- If status is `review` but no approved verdict: dispatch a reviewer via
+  `scripts/review.sh <slug>`.
+
 ## Extracting this skill
 
 This skill is self-contained and project-agnostic. To use it in another

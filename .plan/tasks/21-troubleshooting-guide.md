@@ -4,7 +4,7 @@ aliases: [troubleshooting-guide]
 kind: task
 parent: doc-improvements
 title: Add troubleshooting section to SKILL.md
-status: in_progress
+status: review
 assignee: null
 created: 2026-07-30
 updated: 2026-07-30
@@ -33,13 +33,23 @@ Parent story: [[doc-improvements]] under [[supplementary-tooling]]. The existing
 - [ ] Each entry has: symptom, cause, resolution steps
 - [ ] Keep entries brief and actionable (code snippets where helpful)
 
+## Validation
+
+- [x] Troubleshooting section added to `skills/planr/SKILL.md` before `## Extracting this skill`
+- [x] Covers all 6 required topics with symptom, cause, resolution for each
+- [x] Also covered 2 bonus topics uncovered during implementation (refuse claim, refuse merge)
+- [x] Used imperative mood throughout ("Run `git worktree prune`", not "the user should run...")
+- [x] Added code snippets for commands the leader/worker should execute
+- [x] Verified the section insertion point: `## Troubleshooting` appears after `## Scripts` and before `## Extracting this skill`
+- [x] No other parts of SKILL.md were changed
+
 ## Notes
 
 - 2026-07-30 created
 - The `## Troubleshooting` section should go near the end of SKILL.md, before `## Extracting this skill`
 - Draw from:
   - PROCESS.md edge cases section
-  - merge-task.sh’s conflict guidance comments
-  - claim.sh’s dependency refusal message
-  - review.sh’s worktree discovery fallback
-- Use imperative mood in resolution steps (“Run `git worktree prune`”, not “the user should run...”)
+  - merge-task.sh's conflict guidance comments
+  - claim.sh's dependency refusal message
+  - review.sh's worktree discovery fallback
+- Use imperative mood in resolution steps ("Run `git worktree prune`", not "the user should run...")
