@@ -9,7 +9,7 @@ assignee: null
 created: 2026-07-30
 updated: 2026-07-30
 tags: []
-depends_on: []
+depends_on: [cli-scaffolding]
 ---
 
 ## Goal
@@ -18,9 +18,9 @@ Add `scripts/roll-up.sh` to compute and display progress for stories and epics b
 
 ## Context
 
-Parent story: [[board-improvements]] under [[bash-era-polish]]. Per the plan data model, “roll-up is derived, never stored” — but there’s currently no command to *compute* the derivation. A leader must manually count child task statuses to estimate story completion.
+Parent story: [[board-improvements]] under [[supplementary-tooling]]. Per the plan data model, “roll-up is derived, never stored” — but there’s currently no command to *compute* the derivation. A leader must manually count child task statuses to estimate story completion.
 
-`roll-up.sh` fills this gap: for each story, scan its child tasks (on trunk) and report how many are in each status; for each epic, scan its child stories’ roll-ups.
+Roll-up fills this gap: for each story, scan its child tasks (on trunk) and report how many are in each status; for each epic, scan its child stories’ roll-ups. Implemented as a TS command on the CLI layer, not a bash script.
 
 ## Acceptance
 
@@ -36,10 +36,11 @@ Parent story: [[board-improvements]] under [[bash-era-polish]]. Per the plan dat
 ## Notes
 
 - 2026-07-30 created
-- Reuse `fm_field` / `fm_list` patterns from board.sh and lint.sh
-- Story’s child tasks = tasks whose `parent:` matches the story slug. Scan trunk via `git ls-tree -r --name-only "$trunk" -- "$plan/tasks"`
-- Epic’s child stories = stories whose `parent:` matches the epic slug
+- Implement as TS: read `ParsedTicket[]` from the parser, group by `parent`, count statuses, render table
+- Reuse the git wrappers (`git.ts`) for reading trunk contents
+- `depends_on: [cli-scaffolding]` — needs the parser, git wrappers, and CLI layer
 - Format example:
+
   ```
   ## story progress
   parser-foundation     0/0  (no tasks)

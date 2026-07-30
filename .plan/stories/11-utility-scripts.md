@@ -2,8 +2,8 @@
 id: utility-scripts
 aliases: [utility-scripts]
 kind: story
-parent: bash-era-polish
-title: New helper scripts for the bash era
+parent: supplementary-tooling
+title: New TS utility scripts
 status: todo
 assignee: null
 created: 2026-07-30
@@ -18,7 +18,9 @@ Add two new utility scripts: `backlinks.sh` for discovering which tickets wiki-l
 
 ## Context
 
-Parent epic: [[bash-era-polish]]. The SKILL.md documents `grep -rn '\[\[slug\]\' .plan/` as the backlinks discovery method — a dedicated script is one command with proper .plan/ path resolution. The pre-commit hook is noted as out-of-scope in [[port-scripts-to-typescript]] but is a valuable guardrail that should exist in the bash era.
+Parent epic: [[supplementary-tooling]]. The SKILL.md documents `grep -rn '\[\[slug\]\' .plan/` as the backlinks discovery method — a dedicated TS command is one invocation with proper .plan/ path resolution and frontmatter filtering. The pre-commit hook is noted as out-of-scope in [[port-scripts-to-typescript]] but is a valuable guardrail.
+
+Both are implemented on the TS CLI layer after the port scaffolding is in place.
 
 ## Notes
 

@@ -9,7 +9,7 @@ assignee: null
 created: 2026-07-30
 updated: 2026-07-30
 tags: []
-depends_on: []
+depends_on: [cli-scaffolding]
 ---
 
 ## Goal
@@ -18,9 +18,9 @@ Add a `scripts/backlinks.sh` utility that finds all `.plan/` files wiki-linking 
 
 ## Context
 
-Parent story: [[utility-scripts]] under [[bash-era-polish]]. The SKILL.md says “Backlinks are derived, never stored — same philosophy as roll-up: `grep -rn '\[\[http-connect-proxy' .plan/`”. A dedicated script is a one-command convenience that properly resolves `.plan/` path from env vars and filters out the false positives (e.g., frontmatter `aliases` fields which also contain the slug).
+Parent story: [[utility-scripts]] under [[supplementary-tooling]]. The SKILL.md says “Backlinks are derived, never stored — same philosophy as roll-up: `grep -rn '\[\[http-connect-proxy' .plan/`”. A dedicated TS command resolves `.plan/` path from env vars, filters out frontmatter false positives, and integrates into the CLI.
 
-Existing patterns to follow: `review.sh` for env var handling (`PLANR_DIR`, `PLANR_TRUNK`), `lint.sh` for wiki-link extraction regex (`grep -oE '\[\[[^]]+\]\]'` and stripping `|alias`/`#heading` suffixes).
+Built on the TS CLI layer (`src/cli/`), not a standalone bash script, so it reuses the parser and avoids the grep-frontmatter-filtering fragility. Follow the same CLI pattern as the ported scripts (board, review, etc.).
 
 ## Acceptance
 
@@ -35,6 +35,5 @@ Existing patterns to follow: `review.sh` for env var handling (`PLANR_DIR`, `PLA
 ## Notes
 
 - 2026-07-30 created
-- Build on the existing `grep -oE` pattern from `lint.sh`’s wiki-link extraction
-- Use `grep -rn` with `--include='*.md'` to stay fast on large plans
-- To exclude frontmatter, grep for the link pattern but skip lines before the first `## ` heading (body content), or after the `---` closing frontmatter
+- Implement as TS: iterate `ParsedTicket[]` from the parser and check each body for `[[slug]]`, `[[slug|...]]`, `[[slug#...]]`
+- `depends_on: [cli-scaffolding]` — needs the parser, git wrappers, and CLI layer

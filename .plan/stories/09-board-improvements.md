@@ -2,8 +2,8 @@
 id: board-improvements
 aliases: [board-improvements]
 kind: story
-parent: bash-era-polish
-title: Enhance board.sh with summary stats and progress tracking
+parent: supplementary-tooling
+title: Board summary stats and roll-up progress
 status: todo
 assignee: null
 created: 2026-07-30
@@ -18,9 +18,9 @@ Enhance the board.sh output with summary statistics (ticket counts per status) a
 
 ## Context
 
-Parent epic: [[bash-era-polish]]. The current board.sh lists all tickets but gives no aggregate view — a leader running a project with 40+ tickets has to mentally tally progress. Stories and epics have no %-complete indicator. The worktree branch section also doesn't group in-flight tasks by their parent story.
+Parent epic: [[supplementary-tooling]]. The current board.sh lists all tickets but gives no aggregate view — a leader running a project with 40+ tickets has to mentally tally progress. Stories and epics have no %-complete indicator.
 
-These are pure enhancements to the existing bash scripts. They live in the bash era and will be ported to TS along with the rest of the scripts.
+Board-summary-stats edits board.sh directly (bash). Roll-up-progress is implemented as a new TS command on the CLI layer once the port scaffolding is ready.
 
 ## Notes
 
