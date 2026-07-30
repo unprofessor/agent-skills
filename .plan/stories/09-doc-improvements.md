@@ -18,7 +18,7 @@ Improve the planr skill documentation: optimize the SKILL.md frontmatter descrip
 
 ## Context
 
-Parent epic: [[bash-era-polish]]. The existing documentation is thorough but the frontmatter description can be improved per skill-creator guidance (more "pushy", listing specific trigger phrases). There is also no troubleshooting section — common failure modes like merge conflicts, stale worktrees, and worker interruption are handled in scripts but not documented in one place for the tech lead to reference.
+Parent epic: [[bash-era-polish]]. The existing documentation is thorough but the frontmatter description can be improved per skill-creator guidance (more "pushy", listing specific trigger phrases). There is also no troubleshooting section — common failure modes like merge conflicts, stale worktrees, and worker interruption are handled in scripts but not documented in one place for the leader to reference.
 
 ## Notes
 

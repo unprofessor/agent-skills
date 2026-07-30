@@ -40,8 +40,8 @@ contains() { # contains <desc> <needle> <file>
 }
 
 git init -q -b main .
-git config user.email plan-tests@example.invalid
-git config user.name "plan tests"
+git config user.email planr-tests@example.invalid
+git config user.name "planr tests"
 git commit -q --allow-empty -m init
 
 out="$root/out"; errf="$root/err"

@@ -22,7 +22,7 @@ commits but before the `done` flip, so a red verify rolls the merge back and
 
 Retro finding #1: `merge-task.sh` checks `status: review` + `verdict:
 approved` but not build/test green — that's how a deterministic test failure
-shipped to `main` on the hotcell run. The merge is the tech lead's gate;
+shipped to `main` on the hotcell run. The merge is the leader's gate;
 approving is not the same as verifying.
 
 planr is project-agnostic, so the hook is opt-in per project:
@@ -39,7 +39,7 @@ planr is project-agnostic, so the hook is opt-in per project:
   out-of-scope"), leave the worktree + branch intact for the worker. Do NOT
   flip to `done` or remove the worktree.
 - **Env passthrough:** the hook runs with the worktree's build env; document
-  that `PLAN_TRUNK`/`PLAN_DIR` are NOT passed to the hook (it's the project's
+  that `PLANR_TRUNK`/`PLANR_DIR` are NOT passed to the hook (it's the project's
   own command, not planr's).
 
 See [[port-merge-task]] for the ported `merge-task.ts` this builds on; see
@@ -55,7 +55,7 @@ See [[port-merge-task]] for the ported `merge-task.ts` this builds on; see
 - [ ] When no verify command is configured, the merge proceeds on
   verdict-only and `merge-task.sh` prints a one-line notice to stderr that
   no verify hook is configured (backwards compatible; exit 0 on success).
-- [ ] The hook runs with cwd = repo root; `PLAN_TRUNK`/`PLAN_DIR` are not
+- [ ] The hook runs with cwd = repo root; `PLANR_TRUNK`/`PLANR_DIR` are not
   injected into the hook's env.
 - [ ] `run-tests.sh` gains a merge-task verify test: a task with
   `status: review` + `verdict: approved` and a `.plan/verify.sh` that

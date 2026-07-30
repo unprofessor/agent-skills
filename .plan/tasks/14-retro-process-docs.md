@@ -32,8 +32,8 @@ improvement becomes a task under a hardening epic.
 
 - [ ] PROCESS.md gains a "Retrospective" section: **when** — after an epic
   closes, or after a story with notable events (a red trunk shipped, a
-  worker died, a changes-requested cycle); **who** — the tech lead writes
-  it (it's a tech-lead artifact, like ticket creation); **what** — the
+  worker died, a changes-requested cycle); **who** — the leader writes
+  it (it's a leader artifact, like ticket creation); **what** — the
   template structure, emphasizing the within/without-control split; **how
   it feeds back** — priority-ordered improvements become tasks under a new
   hardening epic (cross-reference [[hotcell-firewall-hardening]] as the

@@ -21,13 +21,13 @@ every field and every body-parse path; proving it validates the foundation.
 
 ## Context
 
-See [[port-scripts]] and the scout inventory (skills/plan/scripts/lint.sh).
+See [[port-scripts]] and the scout inventory (skills/planr/scripts/lint.sh).
 The 3-pass structure (per-file → cross-ref → cycle DFS) becomes pure functions
 over `ParsedTicket[]` — no IO — which makes the lint logic unit-testable
 without a git repo. The block-style `depends_on` check is deleted: a real YAML
 lib parses block-style into the same array, so the failure mode no longer
 exists. Cycle DFS keeps the self-edge skip from the earlier fix
-(skills/plan/scripts/lint.sh, visit()).
+(skills/planr/scripts/lint.sh, visit()).
 
 ## Acceptance
 

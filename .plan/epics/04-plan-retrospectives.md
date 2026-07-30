@@ -35,7 +35,7 @@ to run one and how to feed improvements back as new epics.
 - **Hardening the tool from retro findings.** That's [[hotcell-firewall-hardening]];
   this epic only adds the *practice* of writing retrospectives, not the
   findings themselves.
-- **Automating retro generation.** A retro is a tech-lead-written artifact,
+- **Automating retro generation.** A retro is a leader-written artifact,
   not agent-generated; the scaffolder just creates the file.
 
 ## Notes

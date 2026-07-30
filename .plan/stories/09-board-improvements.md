@@ -14,11 +14,11 @@ depends_on: []
 
 ## Goal
 
-Enhance the board.sh output with summary statistics (ticket counts per status) and add a roll-up progress command so the tech lead can see story/epic completion at a glance without manual counting.
+Enhance the board.sh output with summary statistics (ticket counts per status) and add a roll-up progress command so the leader can see story/epic completion at a glance without manual counting.
 
 ## Context
 
-Parent epic: [[bash-era-polish]]. The current board.sh lists all tickets but gives no aggregate view — a tech leading a project with 40+ tickets has to mentally tally progress. Stories and epics have no %-complete indicator. The worktree branch section also doesn't group in-flight tasks by their parent story.
+Parent epic: [[bash-era-polish]]. The current board.sh lists all tickets but gives no aggregate view — a leader running a project with 40+ tickets has to mentally tally progress. Stories and epics have no %-complete indicator. The worktree branch section also doesn't group in-flight tasks by their parent story.
 
 These are pure enhancements to the existing bash scripts. They live in the bash era and will be ported to TS along with the rest of the scripts.
 

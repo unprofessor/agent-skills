@@ -39,7 +39,7 @@ replace-only (silent no-op if field absent) — insert-if-absent.
   `run-tests.sh` (the test that asserts the error is deleted, replaced by a
   test asserting block-style parses correctly and gating still works).
 - [ ] No `fm_field`/`fm_list`/inline-awk frontmatter parser remains anywhere in
-  `skills/plan/` (grep-clean).
+  `skills/planr/` (grep-clean).
 - [ ] `SKILL.md` and `references/TICKET-FORMAT.md`/`PROCESS.md` updated:
   script table notes TS implementation, the inline-only `depends_on`
   convention is removed, the "block-style is not parsed" warning is removed.

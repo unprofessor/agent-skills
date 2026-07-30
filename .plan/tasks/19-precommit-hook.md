@@ -18,7 +18,7 @@ Add a `scripts/install-hook.sh` script that installs a pre-commit git hook to ru
 
 ## Context
 
-Parent story: [[utility-scripts]] under [[bash-era-polish]]. The [[port-scripts-to-typescript]] epic notes a pre-commit hook as out-of-scope for the port, but it’s a valuable guardrail in the bash era: a tech lead editing frontmatter on trunk can accidentally introduce a dangling reference or cycle, and only remembers to run `lint.sh` after committing. A pre-commit hook catches this at commit time.
+Parent story: [[utility-scripts]] under [[bash-era-polish]]. The [[port-scripts-to-typescript]] epic notes a pre-commit hook as out-of-scope for the port, but it’s a valuable guardrail in the bash era: a leader editing frontmatter on trunk can accidentally introduce a dangling reference or cycle, and only remembers to run `lint.sh` after committing. A pre-commit hook catches this at commit time.
 
 The hook should only trigger when `.plan/` files are staged, to avoid slowing down code-only commits.
 
@@ -30,7 +30,7 @@ The hook should only trigger when `.plan/` files are staged, to avoid slowing do
 - [ ] If `.plan/` files are staged and `lint.sh` reports errors, the commit is aborted with the lint errors printed
 - [ ] `lint.sh` warnings do NOT block the commit (exit 0 with warnings is OK)
 - [ ] The hook chdirs to the repo root so relative script paths work
-- [ ] Documented in SKILL.md (scripts table or a note in the Tech-lead workflow section about running `install-hook.sh`)
+- [ ] Documented in SKILL.md (scripts table or a note in the Leader workflow section about running `install-hook.sh`)
 
 ## Notes
 

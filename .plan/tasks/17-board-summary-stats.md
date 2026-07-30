@@ -14,7 +14,7 @@ depends_on: []
 
 ## Goal
 
-Append a summary section to the end of board.sh output showing ticket counts broken down by status: total, todo, in_progress, review, done, blocked. This gives the tech lead an instant pulse check without scanning every row.
+Append a summary section to the end of board.sh output showing ticket counts broken down by status: total, todo, in_progress, review, done, blocked. This gives the leader an instant pulse check without scanning every row.
 
 ## Context
 

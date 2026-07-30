@@ -17,7 +17,7 @@ depends_on: [cleanup-and-docs]
 Add a read-only `resume.sh <slug>` that reconstructs how far an in-flight
 task got — branch, worktree, last commit, uncommitted changes, current
 status, and `## Validation` progress vs `## Acceptance` — so a re-dispatched
-worker or the tech lead can pick up a dead/interrupted worker cleanly
+worker or the leader can pick up a dead/interrupted worker cleanly
 without manually inspecting git.
 
 ## Context
@@ -62,7 +62,7 @@ this brief useful).
   an uncommitted edit on the branch, run `./scripts/resume.sh <slug>`,
   assert the last-commit subject, the dirty marker, and a `## Validation`
   / `## Notes` line appear; assert exit 1 for a non-existent branch.
-- [ ] SKILL.md scripts table gains a `resume.sh` row (who: tech lead/worker;
+- [ ] SKILL.md scripts table gains a `resume.sh` row (who: leader/worker;
   purpose: reconstruct in-flight state).
 
 ## Notes

@@ -36,7 +36,7 @@ should ignore `retros/` — retros aren't tickets; confirm `lint.sh`'s
 
 ## Acceptance
 
-- [ ] `skills/plan/templates/retro.md` has the structure: frontmatter
+- [ ] `skills/planr/templates/retro.md` has the structure: frontmatter
   (`id`, `aliases`, `title`, `created`, `updated`, `tags`, a `retro_for:`
   field naming the epic/story it covers) + body sections: `## Context`,
   `## What went well — within control`, `## What went well — without

@@ -37,7 +37,7 @@ the ticket schema.
   `.plan/retros/<NN>-<slug>.md`, with a SKILL.md script-table row.
 - [ ] [[retro-process-docs]] merged: PROCESS.md "Retrospective" section
   (when: after an epic closes, or after a story with notable events; how:
-  tech lead writes it, covers within/without control, priority-orders
+  leader writes it, covers within/without control, priority-orders
   improvements) + SKILL.md mention, referencing the hotcell retro as the
   example.
 

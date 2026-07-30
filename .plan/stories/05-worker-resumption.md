@@ -14,11 +14,11 @@ depends_on: []
 
 ## Goal
 
-Make an interrupted worker recoverable without the tech lead manually
+Make an interrupted worker recoverable without the leader manually
 inspecting `git log` + worktree state. Pair a `resume.sh` that reconstructs
 how far a task got with a worker discipline of committing findings to the
 task file *during investigation* — so progress survives an interrupt and the
-tech lead has in-flight visibility without disturbing the worker.
+leader has in-flight visibility without disturbing the worker.
 
 ## Context
 
@@ -26,7 +26,7 @@ The first `loopback-only-net` attempt ended mid-sentence with zero commits;
 the worktree sat at `in_progress` with no record of how far it got. The
 re-dispatched worker *did* commit incrementally, which is why the second
 attempt was recoverable — but that was the worker's discipline, not the
-scheme's. The tech lead pre-seeded the design conclusion into `## Notes`
+scheme's. The leader pre-seeded the design conclusion into `## Notes`
 before re-dispatching, a technique worth formalizing.
 
 This story also subsumes the retro's lower-priority "in-flight visibility"
@@ -40,7 +40,7 @@ scan are the heartbeat — no separate mechanism needed.
   got vs `## Acceptance`.
 - [ ] [[incremental-progress-guidance]] merged: worker workflow instructs
   committing `## Notes` findings incrementally (even mid-investigation) and
-  the tech-lead re-dispatch technique (pre-seed the design conclusion into
+  the leader re-dispatch technique (pre-seed the design conclusion into
   `## Notes` before re-dispatching).
 
 ## Notes

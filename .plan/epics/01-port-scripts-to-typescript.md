@@ -12,7 +12,7 @@ tags: [port, typescript, parser]
 
 ## Goal
 
-Replace the fragile awk/sed/grep markdown+YAML parsing in `skills/plan/scripts/`
+Replace the fragile awk/sed/grep markdown+YAML parsing in `skills/planr/scripts/`
 with a typed, tested TypeScript parser, while keeping the git orchestration thin
 and the skill "copy the folder" portable. Eliminate the entire class of
 silent-parsing-failure modes (--- toggling, block-style depends_on, unscoped

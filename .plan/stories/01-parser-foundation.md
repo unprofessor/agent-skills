@@ -26,7 +26,7 @@ Today all six scripts parse frontmatter with awk helpers (`fm_field`/`fm_list`)
 that toggle an in-frontmatter flag on *any* `---` line — so a body thematic
 break re-enters parsing — and parse inline-list `depends_on` with a regex that
 silently reads block-style YAML as empty (disabling gating). The scout
-inventory (skills/plan/scripts/lint.sh, board.sh, claim.sh, merge-task.sh,
+inventory (skills/planr/scripts/lint.sh, board.sh, claim.sh, merge-task.sh,
 review.sh) cataloged 5 scalar fields read (id, kind, status, parent, title),
 1 inline-list (depends_on), and 4 body-parse sites (## Acceptance, ##
 Validation, last ## Review verdict, [[wiki-links]]). Only the YAML is hard;

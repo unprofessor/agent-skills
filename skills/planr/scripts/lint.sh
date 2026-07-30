@@ -2,9 +2,9 @@
 # Lint the backlog: reference and structure checks the other scripts rely on.
 #
 # Usage: lint.sh [ref]
-#        No argument: lint the working tree's $PLAN_DIR (what you just edited).
+#        No argument: lint the working tree's $PLANR_DIR (what you just edited).
 #        With a git ref (e.g. main): lint the backlog as committed on that ref.
-# Env:   PLAN_DIR (default .plan)
+# Env:   PLANR_DIR (default .plan)
 #
 # Errors (exit 1) — these break claiming, roll-up, or merging:
 #   - missing id, or id not matching the filename slug
@@ -26,7 +26,7 @@
 set -euo pipefail
 
 ref="${1:-}"
-plan="${PLAN_DIR:-.plan}"
+plan="${PLANR_DIR:-.plan}"
 
 errors=0
 warnings=0

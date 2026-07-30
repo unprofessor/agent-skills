@@ -2,7 +2,7 @@
 # Brief a review agent for a task in the review state. Read-only.
 #
 # Usage: review.sh <task-slug> [trunk]
-# Env:   PLAN_TRUNK (default main), PLAN_DIR (default .plan)
+# Env:   PLANR_TRUNK (default main), PLANR_DIR (default .plan)
 #
 # Prints the branch, worktree path (if any), task file path, the task's
 # ## Acceptance and ## Validation sections, and the full diff vs trunk.
@@ -10,8 +10,8 @@
 set -euo pipefail
 
 slug="${1:?task slug required}"
-trunk="${2:-${PLAN_TRUNK:-main}}"
-plan="${PLAN_DIR:-.plan}"
+trunk="${2:-${PLANR_TRUNK:-main}}"
+plan="${PLANR_DIR:-.plan}"
 branch="plan/$slug"
 
 git rev-parse --verify -q "$branch" >/dev/null || {
@@ -58,7 +58,7 @@ self-validation; re-check everything yourself.
        reviewer: <your id>
        date: <YYYY-MM-DD>
        <what you re-checked and the result>
-4. If approved: leave status: review, commit, hand back to the tech lead.
+4. If approved: leave status: review, commit, hand back to the leader.
 5. If changes-requested: also flip status: in_progress, record concretely what
    failed, commit, hand back. The worker will be re-dispatched.
 GUIDANCE

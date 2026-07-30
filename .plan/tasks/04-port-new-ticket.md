@@ -24,7 +24,7 @@ new-ticket.sh does: kind/slug validation (slug regex `^[a-z0-9]+(-[a-z0-9]+)*$`
 from the earlier fix), parent-existence check (greps epics/stories/tasks for
 `NN-<parent>.md`), next sort-hint allocation, template copy + perl
 `__SLUG__`/`__TITLE__`/`__PARENT__`/`__DATE__` substitution, then an
-informational `lint.sh` run on stderr. Templates (skills/plan/templates/*.md)
+informational `lint.sh` run on stderr. Templates (skills/planr/templates/*.md)
 are unchanged — the TS writer reads them and does the substitution. Field
 ordering in the templates (id, aliases, kind, [parent], title, status, …) must
 be preserved so emitted files diff cleanly.
@@ -35,7 +35,7 @@ be preserved so emitted files diff cleanly.
   slug regex `^[a-z0-9]+(-[a-z0-9]+)*$` (rejects trailing/double hyphen,
   uppercase), kind→subdir mapping, parent-existence check across all three
   dirs via `lsTreeMd` or fs, next `NN` allocation, template read +
-  placeholder substitution, write to `PLAN_DIR/<subdir>/<NN>-<slug>.md`.
+  placeholder substitution, write to `PLANR_DIR/<subdir>/<NN>-<slug>.md`.
 - [ ] `aliases: [<slug>]` is rendered inline (matches the template + the
   existing `grep -q 'aliases: \[http-proxy\]'` test).
 - [ ] Informational lint runs on stderr after write; stdout stays exactly the

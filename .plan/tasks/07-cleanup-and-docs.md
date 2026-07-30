@@ -30,7 +30,7 @@ needed at the target).
 
 ## Acceptance
 
-- [ ] `grep -rn 'fm_field\|fm_list\|awk .*---\|perl -i -pe' skills/plan/` is
+- [ ] `grep -rn 'fm_field\|fm_list\|awk .*---\|perl -i -pe' skills/planr/` is
   clean — no bash frontmatter parser remains anywhere.
 - [ ] The block-style `depends_on` error class is gone from lint.ts and from
   `run-tests.sh` (test deleted/rewritten in [[port-lint]]; confirm here).

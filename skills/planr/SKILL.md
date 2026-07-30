@@ -1,9 +1,9 @@
 ---
-name: plan
-description: Trunk-based planning and backlog management for multi-agent development. A tech-lead agent maintains epics, stories, and tasks as one file per ticket on trunk; worker agents implement one task each in a dedicated git worktree branch; a review agent independently verifies completion before merge. Tickets form a dependency graph (any ticket can gate any other) and may cross-reference each other with Obsidian-compatible [[wiki-links]]. Use when planning work, maintaining a backlog, splitting work into tickets, coordinating parallel agents, reviewing a completed task, picking up a task to implement, or linting the backlog for dangling references and dependency cycles.
+name: planr
+description: Trunk-based planning and backlog management for multi-agent development. A leader maintains epics, stories, and tasks as one file per ticket on trunk; workers implement one task each in a dedicated git worktree branch; a reviewer independently verifies completion before merge. Tickets form a dependency graph (any ticket can gate any other) and may cross-reference each other with Obsidian-compatible [[wiki-links]]. Use when planning work, maintaining a backlog, splitting work into tickets, coordinating parallel agents, reviewing a completed task, picking up a task to implement, or linting the backlog for dangling references and dependency cycles.
 ---
 
-# Plan — trunk-based backlog for multi-agent work
+# Planr — trunk-based backlog for multi-agent work
 
 This skill coordinates planning, execution, and review across three agent
 roles. It is project-agnostic: the only project-specific data is a
@@ -11,7 +11,7 @@ git-tracked `.plan/` directory it creates in the repo root.
 
 ## Roles
 
-- **Tech lead** — a *foreground* agent run in close coordination with the
+- **Leader** — a *foreground* agent run in close coordination with the
   developer. It is the **single writer** to the backlog: it creates and edits
   epic/story/task files on trunk, splits and reprioritizes work, dispatches
   workers and reviewers, merges approved task branches into trunk, and
@@ -27,8 +27,8 @@ git-tracked `.plan/` directory it creates in the repo root.
   `review`-state task. It reads the task + acceptance criteria, reads the
   diff, and **runs the acceptance checks itself** in the worktree. It edits
   **only the task file** (never code): it adds a `## Review` section with
-  `verdict: approved` or `verdict: changes-requested`. On approval the tech
-  lead merges; on changes-requested the task returns to the worker.
+  `verdict: approved` or `verdict: changes-requested`. On approval the leader
+  merges; on changes-requested the task returns to the worker.
 
 `review` → `done` is **never** on the honor system: it requires an independent
 reviewer's approved verdict, which `merge-task.sh` checks before merging.
@@ -48,7 +48,7 @@ locks are needed.
 
 ## Trunk vs. worktree
 
-- **Trunk** (default `main`; override with `PLAN_TRUNK`) holds the backlog and
+- **Trunk** (default `main`; override with `PLANR_TRUNK`) holds the backlog and
   is the single source of truth for what tickets exist and their merged
   statuses.
 - A **worktree branch** (`plan/<task-slug>`) carries one task's in-flight
@@ -61,7 +61,7 @@ checkout. `scripts/board.sh` reads trunk via `git show` for the backlog and
 scans `plan/*` branches for in-flight status (including `review`-ready), so
 review-ready work is visible before merge — no checkout required.
 
-## Tech-lead workflow
+## Leader workflow
 
 1. With the developer, plan the work. Read the current board:
    ```bash
@@ -108,7 +108,7 @@ concurrency reasoning, review/validation detail, and edge cases.
 
 ## Worker workflow
 
-1. Start in your assigned worktree (path given by the tech lead). The task
+1. Start in your assigned worktree (path given by the leader). The task
    file is already flipped to `in_progress` by `claim.sh`.
 2. Read your task file (`.plan/tasks/<NN>-<slug>.md`) and its parent story for
    context. Note `depends_on` — those tickets are `done` (claim.sh checked).
@@ -122,11 +122,10 @@ concurrency reasoning, review/validation detail, and edge cases.
    results. Only when every acceptance criterion is met:
    - set `status: review`,
    - bump `updated:`,
-   - commit (see [Git conventions](#git-conventions) below), and hand the
-     branch back to the tech lead.
+   - commit, and hand the branch back to the leader.
 6. Do not create new tickets, and do not set `status: done` — that is the
-   reviewer + tech lead's job. If you discover missing work, note it in
-   `## Notes` for the tech lead to triage.
+   reviewer + leader's job. If you discover missing work, note it in
+   `## Notes` for the leader to triage.
 
 ## Reviewer workflow
 
@@ -144,66 +143,18 @@ concurrency reasoning, review/validation detail, and edge cases.
    date: 2025-07-29
    <what you checked and the result>
    ```
-4. If `approved`: leave `status: review`, commit (see [Git conventions](#git-conventions) below),
-   hand back to the tech lead to merge.
+4. If `approved`: leave `status: review`, commit, hand back to the leader
+   to merge.
 5. If `changes-requested`: set `verdict: changes-requested`, **flip
-   `status: in_progress`**, record concretely what failed, commit (see
-   [Git conventions](#git-conventions) below), and hand back. The tech lead
-   re-dispatches the worker.
-
-## Git conventions
-
-These conventions ensure the git history accurately reflects who worked on
-what. They apply to **all** role workflows (worker, reviewer, tech lead).
-
-### Author identity
-
-Use the repo's default git identity for the commit **author** — this is the
-human who owns the repo and session. Do not override `user.name` / `user.email`
-with an agent identity.
-
-**Why:** The git history should credit the human as the author (they own the
-repo, the machine, and the session). An agent overriding the author field
-erases that attribution.
-
-### Co-Authored-By trailer
-
-When an agent (worker, reviewer, or any subagent) creates or finishes a change,
-add a `Co-Authored-By` trailer as the last line of the commit message body:
-
-```
-<descriptive subject line>
-
-Co-Authored-By: <agent-name>
-```
-
-Use your agent identity — the same `reviewer: <your id>` you put in the review
-block, or the task worker's configured name. Leave the email portion out unless
-you have a stable, recognized agent address.
-
-**Why:** `Co-Authored-By` is the standard Git/GitHub mechanism for
-acknowledging co-contributors. It records the agent's role in the commit log
-and is surfaced by GitHub's UI, without erasing the human author. This is the
-same mechanism GitHub uses when multiple people collaborate on a commit via
-pull requests.
-
-### Commit messages
-
-Use conventional-commit style: start with a lowercase area prefix in
-parentheses when relevant, keep the subject under 72 characters.
-
-```
-plan(task-slug): brief description
-
-Co-Authored-By: worker-1
-```
+   `status: in_progress`**, record concretely what failed, commit, and hand
+   back. The leader re-dispatches the worker.
 
 ## Ticket format
 
 Descriptive slug filenames, YAML frontmatter + markdown body. Frontmatter
 includes `depends_on` (slugs of any tickets that must be `done` before this
 one is dispatchable). The body grows through the lifecycle: `## Acceptance`
-(created by tech lead) → `## Validation` (worker) → `## Review` (reviewer). See
+(created by the leader) → `## Validation` (worker) → `## Review` (reviewer). See
 [references/TICKET-FORMAT.md](references/TICKET-FORMAT.md) for the full schema,
 slug rules, status lifecycle, and review format; [templates/](templates/) has
 starter files.
@@ -236,13 +187,13 @@ only `scripts/board.sh` sees.
 | Script | Who | Purpose |
 |---|---|---|
 | `scripts/board.sh` | all | Read-only board: backlog from trunk + in-flight/review-ready from `plan/*` branches |
-| `scripts/lint.sh` | tech lead | Backlog checks: dangling `parent`/`depends_on`, duplicate slugs, dependency cycles (errors); unresolved `[[links]]` (warnings). Lints the working tree, or a ref (`lint.sh main`) |
-| `scripts/new-ticket.sh` | tech lead | Scaffold a ticket file with next sort-hint + slug; verifies the parent exists; runs `lint.sh` |
-| `scripts/claim.sh` | tech lead | Create a worktree branch for a task; flips to `in_progress`; refuses if `depends_on` unmet |
-| `scripts/review.sh` | tech lead/reviewer | Brief a reviewer: branch, worktree, acceptance criteria, diff vs trunk |
-| `scripts/merge-task.sh` | tech lead | Merge an approved task (`status: review` + `verdict: approved`); flips to `done`; handles conflicts with guidance |
+| `scripts/lint.sh` | leader | Backlog checks: dangling `parent`/`depends_on`, duplicate slugs, dependency cycles (errors); unresolved `[[links]]` (warnings). Lints the working tree, or a ref (`lint.sh main`) |
+| `scripts/new-ticket.sh` | leader | Scaffold a ticket file with next sort-hint + slug; verifies the parent exists; runs `lint.sh` |
+| `scripts/claim.sh` | leader | Create a worktree branch for a task; flips to `in_progress`; refuses if `depends_on` unmet |
+| `scripts/review.sh` | leader/reviewer | Brief a reviewer: branch, worktree, acceptance criteria, diff vs trunk |
+| `scripts/merge-task.sh` | leader | Merge an approved task (`status: review` + `verdict: approved`); flips to `done`; handles conflicts with guidance |
 
-All scripts honor `PLAN_TRUNK` (default `main`) and `PLAN_DIR` (default
+All scripts honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 `.plan`) env vars, so the scheme works in any repo without editing the skill.
 
 `tests/run-tests.sh` exercises the scripts end-to-end in a throwaway git repo
@@ -252,6 +203,6 @@ after changing any script.
 ## Extracting this skill
 
 This skill is self-contained and project-agnostic. To use it in another
-project, copy `.agents/skills/plan/` into that repo's `.agents/skills/` (or
+project, copy `.agents/skills/planr/` into that repo's `.agents/skills/` (or
 `~/.agents/skills/` for global use). The `.plan/` directory it produces is the
 only project-specific data.

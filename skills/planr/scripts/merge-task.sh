@@ -2,7 +2,7 @@
 # Merge a reviewed-and-approved task branch back into trunk.
 #
 # Usage: merge-task.sh <task-slug> [worktree-path] [trunk]
-# Env:   PLAN_TRUNK (default main), PLAN_DIR (default .plan)
+# Env:   PLANR_TRUNK (default main), PLANR_DIR (default .plan)
 #
 # Guards:
 #   - the task file on the branch must have status: review
@@ -15,8 +15,8 @@ set -euo pipefail
 
 slug="${1:?task slug required}"
 wt="${2:-../wt-$slug}"
-trunk="${3:-${PLAN_TRUNK:-main}}"
-plan="${PLAN_DIR:-.plan}"
+trunk="${3:-${PLANR_TRUNK:-main}}"
+plan="${PLANR_DIR:-.plan}"
 branch="plan/$slug"
 
 git rev-parse --verify -q "$branch" >/dev/null || {

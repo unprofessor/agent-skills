@@ -21,7 +21,7 @@ ran the project's verification. The merge gate must verify, not just trust.
 ## Context
 
 The hotcell `loopback-only-net` reviewer approved despite seeing a test
-failure (calling it "transient"); the tech lead merged without re-running
+failure (calling it "transient"); the leader merged without re-running
 the suite on trunk. The failure was deterministic (5/5 on `main` after
 merge). "Approved" was not sufficient — the flakiness masked a real bug, and
 it wasn't caught until the next task ran the full suite.

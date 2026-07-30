@@ -39,7 +39,7 @@ exact current behavior, worktree support intact.
   `diffRefs`, `branchList`, `worktreeList`, `revParseVerify`.
 - [ ] `src/cli/` has one thin entry per script (`board.ts`, `claim.ts`,
   `lint.ts`, `new-ticket.ts`, `review.ts`, `merge-task.ts`) that parses argv
-  (positional + `PLAN_TRUNK`/`PLAN_DIR` env), calls library functions, prints,
+  (positional + `PLANR_TRUNK`/`PLANR_DIR` env), calls library functions, prints,
   and sets exit code. Each is <40 lines and does NO parsing logic itself.
 - [ ] `scripts/*.sh` are rewritten as shims: `#!/usr/bin/env bash` +
   `exec node "$(dirname "$0")/../dist/cli/<name>.js" "$@"`. The six existing

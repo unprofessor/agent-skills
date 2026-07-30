@@ -18,7 +18,7 @@ Add `scripts/roll-up.sh` to compute and display progress for stories and epics b
 
 ## Context
 
-Parent story: [[board-improvements]] under [[bash-era-polish]]. Per the plan data model, “roll-up is derived, never stored” — but there’s currently no command to *compute* the derivation. A tech lead must manually count child task statuses to estimate story completion.
+Parent story: [[board-improvements]] under [[bash-era-polish]]. Per the plan data model, “roll-up is derived, never stored” — but there’s currently no command to *compute* the derivation. A leader must manually count child task statuses to estimate story completion.
 
 `roll-up.sh` fills this gap: for each story, scan its child tasks (on trunk) and report how many are in each status; for each epic, scan its child stories’ roll-ups.
 
@@ -28,7 +28,7 @@ Parent story: [[board-improvements]] under [[bash-era-polish]]. Per the plan dat
 - [ ] `scripts/roll-up.sh --epics` also rolls up epics from their child stories’ aggregate
 - [ ] `scripts/roll-up.sh <story-slug>` shows detail for one story only
 - [ ] Reads from trunk (like board.sh), not the working tree, via `git show`
-- [ ] Honors `PLAN_DIR` and `PLAN_TRUNK` env vars
+- [ ] Honors `PLANR_DIR` and `PLANR_TRUNK` env vars
 - [ ] Column-aligned output, sorted by parent then sort-hint
 - [ ] Documented in SKILL.md scripts table
 - [ ] Tests added to `tests/run-tests.sh` (create a story with 3 tasks at various statuses, verify roll-up counts)

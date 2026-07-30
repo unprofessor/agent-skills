@@ -33,7 +33,7 @@ lifecycle terminal). `lint.sh` warns when a task is `done` with an
 unchecked `- [ ]` acceptance box AND no `## Waiver` block (the waiver is
 the documented escape hatch; without it, an unchecked box at `done` is a
 likely overclaim). `board.sh` marks a waived task's status `done*` so the
-tech lead sees waivers at a glance.
+leader sees waivers at a glance.
 
 ## Acceptance
 

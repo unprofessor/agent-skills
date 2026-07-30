@@ -1,11 +1,11 @@
-# The plan process
+# The planr process
 
 ## Why this design
 
 The goal is a backlog system where **two agents working two different tickets
 never edit the same file**. That property lets any number of workers run in
 parallel worktrees without coordination overhead, and it lets merges be
-trivial (no plan-bookkeeping conflicts).
+trivial (no backlog-bookkeeping conflicts).
 
 Three rules deliver it:
 
@@ -27,7 +27,7 @@ overlap between tasks, not a bookkeeping failure to paper over.)
 
 ## Roles
 
-- **Tech lead** (foreground, with the developer) — sole writer to the backlog:
+- **Leader** (foreground, with the developer) — sole writer to the backlog:
   creates tickets, sets `depends_on`, dispatches workers and reviewers, merges
   approved branches. Does not implement or review.
 - **Worker** — implements one task in a worktree; self-validates; sets
@@ -38,7 +38,7 @@ overlap between tasks, not a bookkeeping failure to paper over.)
 
 ## Trunk is the board (plus open branches)
 
-Trunk (default `main`; `PLAN_TRUNK` to override) is the single source of truth
+Trunk (default `main`; `PLANR_TRUNK` to override) is the single source of truth
 for what tickets exist and their merged statuses. A worktree branch only sees
 tickets that existed when it was cut, so workers must read the board from
 trunk, not their checkout. `scripts/board.sh` does this read-only via
@@ -52,17 +52,14 @@ shows up as "ready for review" immediately, without waiting for merge.
 
 1. **Worker completes** implementation and self-validates every `## Acceptance`
    criterion, recording what was checked in a `## Validation` section (commands
-   + results). Sets `status: review`. Commits on the task branch (see
-   [Git conventions](#git-conventions) below).
+   + results). Sets `status: review`. Commits on the task branch.
 2. **Reviewer (fresh context)** reads the task, the diff, and `## Validation`,
    then **runs the acceptance checks itself** in the worktree. It edits only
    the task file:
-   - `verdict: approved` → leaves `status: review`, adds `## Review`, commits
-     (see [Git conventions](#git-conventions) below).
+   - `verdict: approved` → leaves `status: review`, adds `## Review`, commits.
    - `verdict: changes-requested` → adds `## Review`, flips `status: in_progress`,
-     commits (see [Git conventions](#git-conventions) below). The tech lead
-     re-dispatches the worker.
-3. **Tech lead merges** with `merge-task.sh`, which requires both
+     commits. The leader re-dispatches the worker.
+3. **Leader merges** with `merge-task.sh`, which requires both
    `status: review` **and** an approved `## Review` verdict, then flips the
    task to `done` on trunk as part of the merge.
 
@@ -88,7 +85,7 @@ Together they form one dependency graph over the whole backlog. Enforcement:
   are not all `status: done` on trunk, printing the blockers. So a worker is
   never dispatched onto a task whose prerequisites are unfinished.
 - **`board.sh`** shows a `BLOCKED-BY` column for tasks: any dep not `done` on
-  trunk is listed, so the tech lead can see at a glance what's ready versus
+  trunk is listed, so the leader can see at a glance what's ready versus
   what's waiting.
 - **`lint.sh`** keeps the graph sound: a `depends_on` slug that doesn't exist
   (a gate nothing can satisfy), a dangling `parent` (an orphan that roll-up
@@ -102,12 +99,12 @@ Together they form one dependency graph over the whole backlog. Enforcement:
   can't express (an external decision, a bug in a dep outside this plan). Put
   the reason in `## Notes`. Prefer `depends_on` for ordering within the plan.
 
-Dependencies are set/edited by the tech lead on trunk (a backlog edit), never
+Dependencies are set/edited by the leader on trunk (a backlog edit), never
 by workers on a task branch.
 
 ## Workflow
 
-### Planning (tech lead + developer, on trunk)
+### Planning (leader + developer, on trunk)
 
 1. Read the board: `./scripts/board.sh`.
 2. Create tickets with `scripts/new-ticket.sh`, fill bodies, set `depends_on`
@@ -122,8 +119,7 @@ by workers on a task branch.
 3. Edit only your task file + code.
 4. Implement; log to `## Notes`.
 5. Self-validate every `## Acceptance` item; record `## Validation`; set
-   `status: review`; commit (see [Git conventions](#git-conventions) below);
-   hand back.
+   `status: review`; commit; hand back.
 
 ### Review (reviewer, fresh context, in the worktree)
 
@@ -131,9 +127,9 @@ by workers on a task branch.
 2. Run the acceptance checks yourself.
 3. Edit only the task file's `## Review`: `verdict: approved` (leave
    `status: review`) or `verdict: changes-requested` (flip `status: in_progress`).
-4. Commit (see [Git conventions](#git-conventions) below); hand back.
+4. Commit; hand back.
 
-### Integration (tech lead, on trunk)
+### Integration (leader, on trunk)
 
 1. `scripts/merge-task.sh <slug>`:
    - requires `status: review` + `verdict: approved` (refuses otherwise with
@@ -150,7 +146,7 @@ by workers on a task branch.
   write the same task file because they're in separate checkouts on separate
   branches. `status: in_progress` is a record, not a coordination primitive.
 - **Ticket creation** is racy only if workers create tickets. They don't —
-  only the tech lead does, in a single sequential session.
+  only the leader does, in a single sequential session.
 - **Review is independent** by construction: the reviewer runs fresh-context
   and reads the worktree, so it is not influenced by the worker's session.
 - **Reading the board** is always safe: `git show` / `git branch` are
@@ -159,16 +155,16 @@ by workers on a task branch.
 ## Edge cases
 
 - **A worker discovers missing work.** It does *not* create a ticket. It
-  records the gap in its task's `## Notes` for the tech lead to triage.
+  records the gap in its task's `## Notes` for the leader to triage.
 - **A task needs to split.** The worker finishes or pauses, hands back the
-  branch; the tech lead creates the new sub-tasks on trunk (with
+  branch; the leader creates the new sub-tasks on trunk (with
   `depends_on` as needed) and re-dispatches.
 - **Two tasks touch the same code.** Let them conflict at merge time — that's
   a real signal the tasks overlap. `merge-task.sh` aborts and tells the worker
   to rebase onto fresh trunk; resolve by sequencing (merge one, rebase the
   other) or by re-splitting the work in planning.
 - **Review requests changes.** The branch stays alive with `status: in_progress`
-  and a `changes-requested` verdict; the tech lead re-dispatches the worker to
+  and a `changes-requested` verdict; the leader re-dispatches the worker to
   the same worktree. The worker addresses the notes, re-validates, and sets
   `review` again (the reviewer's earlier `## Review` stays in the file as a
   record; the new review appends a second `## Review` block or amends —
@@ -176,59 +172,12 @@ by workers on a task branch.
 - **Renaming a story/epic.** The parent link is in frontmatter (not the
   filename), so renaming a story's file only requires updating `parent:` in its
   child tasks and any `depends_on` that reference it — a small, well-contained
-  edit the tech lead does on trunk. Run `scripts/lint.sh` afterwards: it
+  edit the leader does on trunk. Run `scripts/lint.sh` afterwards: it
   errors on any `parent`/`depends_on` still pointing at the old slug and warns
   on stale `[[wiki-links]]`.
 - **No trunk yet / fresh repo.** `scripts/new-ticket.sh` writes to the working
   tree; commit `.plan/` to trunk before any `claim.sh` so workers branch from a
   backlog that exists.
-
-## Git conventions
-
-These conventions ensure the git history accurately reflects who worked on
-what. They apply to **all** role workflows (worker, reviewer, tech lead).
-
-### Author identity
-
-Use the repo's default git identity for the commit **author** — this is the
-human who owns the repo and session. Do not override `user.name` / `user.email`
-with an agent identity.
-
-**Why:** The git history should credit the human as the author (they own the
-repo, the machine, and the session). An agent overriding the author field
-erases that attribution.
-
-### Co-Authored-By trailer
-
-When an agent (worker, reviewer, or any subagent) creates or finishes a change,
-add a `Co-Authored-By` trailer as the last line of the commit message body:
-
-```
-<descriptive subject line>
-
-Co-Authored-By: <agent-name>
-```
-
-Use your agent identity — the same `reviewer: <your id>` you put in the review
-block, or the task worker's configured name. Leave the email portion out unless
-you have a stable, recognized agent address.
-
-**Why:** `Co-Authored-By` is the standard Git/GitHub mechanism for
-acknowledging co-contributors. It records the agent's role in the commit log
-and is surfaced by GitHub's UI, without erasing the human author. This is the
-same mechanism GitHub uses when multiple people collaborate on a commit via
-pull requests.
-
-### Commit messages
-
-Use conventional-commit style: start with a lowercase area prefix in
-parentheses when relevant, keep the subject under 72 characters.
-
-```
-plan(task-slug): brief description
-
-Co-Authored-By: worker-1
-```
 
 ## What this scheme deliberately does not have
 
@@ -237,7 +186,7 @@ Co-Authored-By: worker-1
 - **No lock files or claim markers.** The branch is the claim.
 - **No hierarchical filenames** (`E01/S02/T03`). Flat slugs per kind keep
   renames cheap and `git log` readable; the parent link lives in frontmatter.
-- **No worker-created tickets.** Creation is the tech lead's job, which makes
+- **No worker-created tickets.** Creation is the leader's job, which makes
   allocation race-free.
 - **No self-merge.** `done` requires an independent reviewer's approved
   verdict; the scripts enforce it.

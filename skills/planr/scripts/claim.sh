@@ -3,7 +3,7 @@
 # Refuses if the task's depends_on are not all `done` on trunk.
 #
 # Usage: claim.sh <task-slug> [worktree-path] [trunk]
-# Env:   PLAN_TRUNK (default main), PLAN_DIR (default .plan)
+# Env:   PLANR_TRUNK (default main), PLANR_DIR (default .plan)
 #
 # Creates branch plan/<slug> in a new worktree (default ../wt-<slug>) off
 # trunk, verifies dependencies are done, sets the task's status: in_progress
@@ -13,8 +13,8 @@ set -euo pipefail
 
 slug="${1:?task slug required}"
 wt="${2:-../wt-$slug}"
-trunk="${3:-${PLAN_TRUNK:-main}}"
-plan="${PLAN_DIR:-.plan}"
+trunk="${3:-${PLANR_TRUNK:-main}}"
+plan="${PLANR_DIR:-.plan}"
 branch="plan/$slug"
 
 path=$(git ls-tree -r --name-only "$trunk" -- "$plan/tasks" 2>/dev/null \
@@ -51,7 +51,7 @@ if [[ -n "$deps" ]]; then
   done
   if [[ -n "$blockers" ]]; then
     echo "refuse claim: '$slug' has unfinished depends_on:${blockers}" >&2
-    echo "resolve or complete these first, or have the tech lead update depends_on." >&2
+    echo "resolve or complete these first, or have the leader update depends_on." >&2
     exit 1
   fi
 fi

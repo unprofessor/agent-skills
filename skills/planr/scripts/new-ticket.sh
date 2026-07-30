@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Scaffold a new ticket file from a template. Run on trunk (tech lead only).
+# Scaffold a new ticket file from a template. Run on trunk (leader only).
 #
 # Usage: new-ticket.sh <kind> <slug> <title> [parent-slug]
-# Env:   PLAN_DIR (default .plan)
+# Env:   PLANR_DIR (default .plan)
 #
 # Writes <plan>/<kind-plural>/<NN>-<slug>.md with frontmatter filled and
 # prints the path. The caller then fills the body and commits. The parent slug
@@ -15,7 +15,7 @@ slug="${2:?slug required}"
 title="${3:?title required}"
 parent="${4:-}"
 
-plan="${PLAN_DIR:-.plan}"
+plan="${PLANR_DIR:-.plan}"
 case "$kind" in
   epic)  subdir="epics" ;;
   story) subdir="stories" ;;

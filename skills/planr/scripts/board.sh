@@ -3,7 +3,7 @@
 # No checkout required; reads via git show / git branch.
 #
 # Usage: board.sh [trunk]
-# Env:   PLAN_TRUNK (default main), PLAN_DIR (default .plan)
+# Env:   PLANR_TRUNK (default main), PLANR_DIR (default .plan)
 #
 # Prints, in order: epics, stories, tasks (from trunk, with BLOCKED-BY for
 # tasks whose depends_on are not all done), then an "in flight" section
@@ -11,8 +11,8 @@
 # before merge).
 set -euo pipefail
 
-trunk="${1:-${PLAN_TRUNK:-main}}"
-plan="${PLAN_DIR:-.plan}"
+trunk="${1:-${PLANR_TRUNK:-main}}"
+plan="${PLANR_DIR:-.plan}"
 
 fm_field() {
   awk -v k="$1" '

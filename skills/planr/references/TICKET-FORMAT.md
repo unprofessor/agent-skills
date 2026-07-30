@@ -15,7 +15,7 @@
 - **`slug`** — the human handle: short, kebab-case, no spaces, no slashes.
   Example: `http-connect-proxy`. The slug is the identity; frontmatter `id`
   repeats it for grep.
-- Uniqueness is guaranteed by the tech lead being the sole creator (it can
+- Uniqueness is guaranteed by the leader being the sole creator (it can
   just `ls` the directory) and checked by `scripts/lint.sh` (a duplicate slug
   anywhere in the backlog is an error).
 
@@ -69,13 +69,13 @@ todo  -->  in_progress  -->  review  -->  done
 - `review` — worker has self-validated against `## Acceptance` and recorded
   `## Validation`; awaiting independent review.
 - `done` — an independent reviewer approved (`## Review` verdict: approved)
-  and the tech lead merged. Only ever appears on trunk after `merge-task.sh`.
+  and the leader merged. Only ever appears on trunk after `merge-task.sh`.
 - `blocked` — cannot proceed for a reason a dependency can't express (external
   decision, etc.); reason in `## Notes`. Prefer `depends_on` for ordering
   within the plan.
 
 **`review` → `done` is never self-served.** A worker sets `review`; a
-reviewer's approved verdict + the tech lead's merge set `done`. The scripts
+reviewer's approved verdict + the leader's merge set `done`. The scripts
 enforce this: `merge-task.sh` refuses a merge without `status: review` and an
 approved `## Review` verdict.
 

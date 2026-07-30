@@ -26,7 +26,7 @@ Parent story: [[doc-improvements]] under [[bash-era-polish]]. The existing docum
 - [ ] Covers at minimum:
   - **Merge conflict during `merge-task.sh`**: what the error looks like, how the worker rebases, the exact commands to run
   - **Stale worktree after branch cleanup**: `git worktree prune` and manual removal
-  - **Worker interrupted mid-task**: how to check task file `## Notes`, resume protocol, what the tech lead should do
+  - **Worker interrupted mid-task**: how to check task file `## Notes`, resume protocol, what the leader should do
   - **Reviewer cannot find worktree**: `scripts/review.sh` prints the path; fallback `git worktree list`
   - **Dependency cycle detected**: how to read the cycle output from lint.sh, how to break it
   - **Cross-platform sed issues**: macOS users need `brew install gnu-sed` or the workaround command
