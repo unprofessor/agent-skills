@@ -25,8 +25,8 @@ esac
 
 # Slugs are identity: every script greps for them, and [[wiki-links]] target
 # them, so keep them to kebab-case.
-if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-  echo "bad slug '$slug': want kebab-case ([a-z0-9-], starting with [a-z0-9])" >&2
+if [[ ! "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "bad slug '$slug': want kebab-case (lowercase alphanumerics, single hyphens between segments, starting with [a-z0-9])" >&2
   exit 1
 fi
 

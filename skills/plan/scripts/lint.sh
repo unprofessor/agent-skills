@@ -119,6 +119,9 @@ while IFS= read -r f; do
   # "depends_on:") parses as empty here AND in claim.sh — the deps would
   # silently stop gating. Must be loud: that is the one failure mode the
   # dependency graph cannot survive.
+  # NB: like fm_field/fm_list, the awk toggles on any ^---$ line, so a body
+  # thematic break re-enters frontmatter parsing — acceptable since ticket
+  # bodies don't use raw `---` and the real field always precedes any body.
   if printf '%s' "$blob" | awk '
        /^---$/ { f = !f; next }
        f && /^depends_on:[[:space:]]*$/ { bad = 1; exit }
@@ -203,6 +206,9 @@ visit() {
   stack+=("$n")
   local d
   for d in ${deps_of[$n]:-}; do
+    # Self-dependency is already reported in pass 2; skip it here so a
+    # self-edge isn't also printed as a one-node cycle.
+    [[ "$d" == "$n" ]] && continue
     if [[ -n "${file_of[$d]:-}" ]]; then
       visit "$d"
     fi

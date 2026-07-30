@@ -71,8 +71,8 @@ todo  -->  in_progress  -->  review  -->  done
 - `done` — an independent reviewer approved (`## Review` verdict: approved)
   and the tech lead merged. Only ever appears on trunk after `merge-task.sh`.
 - `blocked` — cannot proceed for a reason a dependency can't express (external
-  decision, etc.); reason in `## Notes`. Prefer `depends_on` for sibling
-  ordering.
+  decision, etc.); reason in `## Notes`. Prefer `depends_on` for ordering
+  within the plan.
 
 **`review` → `done` is never self-served.** A worker sets `review`; a
 reviewer's approved verdict + the tech lead's merge set `done`. The scripts

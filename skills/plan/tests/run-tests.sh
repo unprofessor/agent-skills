@@ -54,6 +54,11 @@ contains "  ...with a clear message" "create the parent first" "$errf"
 "$skill/scripts/new-ticket.sh" epic "Bad Slug!" "Nope" >"$out" 2>"$errf"
 check "new-ticket refuses non-kebab slug" 1 $?
 
+"$skill/scripts/new-ticket.sh" epic foo- "Trailing hyphen" >"$out" 2>"$errf"
+check "new-ticket refuses trailing-hyphen slug" 1 $?
+"$skill/scripts/new-ticket.sh" epic foo--bar "Double hyphen" >"$out" 2>"$errf"
+check "new-ticket refuses double-hyphen slug" 1 $?
+
 # --- happy path: epic -> two stories -> tasks, cross-story dep ---
 "$skill/scripts/new-ticket.sh" epic v1 "Ship v1" >"$out" 2>"$errf"
 check "create epic" 0 $?
@@ -120,6 +125,15 @@ sed -i 's/^depends_on: \[\]/depends_on: [wire-cli]/' .plan/tasks/01-http-proxy.m
 check "lint errors on dependency cycle" 1 $?
 contains "  ...prints the cycle" "depends_on cycle" "$out"
 sed -i 's/^depends_on: \[wire-cli\]/depends_on: []/' .plan/tasks/01-http-proxy.md
+
+# Self-dependency: pass 2 reports it; pass 3 must NOT also print a cycle.
+sed -i 's/^depends_on: \[\]/depends_on: [http-proxy]/' .plan/tasks/01-http-proxy.md
+"$skill/scripts/lint.sh" >"$out" 2>&1
+check "lint errors on self-dependency" 1 $?
+contains "  ...says depends_on itself" "depends_on itself" "$out"
+if ! grep -qF "depends_on cycle" "$out"; then pass=$((pass+1)); echo "PASS: self-dep reported once, not as a cycle";
+else fail=$((fail+1)); echo "FAIL: self-dep double-reported as cycle"; cat "$out"; fi
+sed -i 's/^depends_on: \[http-proxy\]/depends_on: []/' .plan/tasks/01-http-proxy.md
 
 sed -i 's/^parent: cli-wiring/parent: gone-story/' .plan/tasks/02-wire-cli.md
 "$skill/scripts/lint.sh" >"$out" 2>&1
