@@ -60,7 +60,10 @@ Tests:
 
 ## Review
 
-**Verdict: Approved.** All acceptance criteria are satisfied.
+verdict: approved
+reviewer: The Clanker
+date: 2026-07-30
+All acceptance criteria are satisfied.
 
 ### Evidence
 
