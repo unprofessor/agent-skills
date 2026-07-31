@@ -4,7 +4,7 @@ aliases: [trigger-description]
 kind: task
 parent: doc-improvements
 title: Optimize SKILL.md frontmatter for triggering
-status: review
+status: done
 assignee: null
 created: 2026-07-30
 updated: 2026-07-30
