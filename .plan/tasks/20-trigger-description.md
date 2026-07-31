@@ -41,6 +41,28 @@ All acceptance criteria checked against the updated `skills/planr/SKILL.md`:
 - [x] **No factual changes**: Same capabilities (leader/worker/reviewer roles, one-file-per-ticket, worktrees, dependency graph, wiki-links) — no new claims or data model changes
 - [x] **Only description changed**: `git diff skills/planr/SKILL.md` shows exactly one-line change, only the `description:` frontmatter field; body unchanged
 
+## Review
+
+**Reviewer:** The Clanker (independent review subagent)
+**Date:** 2026-07-30
+**Verdict:** approved
+
+### Acceptance criteria verification
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| Trigger phrases present | ✅ Pass | All 5 required phrases confirmed via grep: "we need to plan this", "split into tasks", "what's the dependency order", "who's reviewing", "setup worktrees" |
+| Directive / pushy tone | ✅ Pass | Description opens with "Use this skill when the developer says..." — imperative, context-first framing |
+| Under ~150 words | ✅ Pass | `wc -w` reports 101 words (well under 150) |
+| No factual changes to capabilities/data model | ✅ Pass | `git diff` shows only the one `description:` field changed; body (roles, scripts, workflows, ticket format, etc.) is completely unchanged |
+| Rest of SKILL.md (body) unchanged | ✅ Pass | Only line 4 (the `description:` frontmatter field) differs between trunk and branch |
+
+### Validation commands run
+
+- `git diff main...HEAD -- skills/planr/SKILL.md` — confirmed only description field changed, body untouched
+- `wc -w` on new description — 101 words
+- `grep` for each required trigger phrase — all 5 found
+
 ## Notes
 
 - 2026-07-30 created
