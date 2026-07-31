@@ -213,6 +213,30 @@ else fail=$((fail+1)); echo "FAIL: parallel prefixes collided ($count distinct):
 "$skill/scripts/lint.sh" >"$out" 2>&1
 check "lint clean after parallel batch" 0 $?
 
+# --- board.sh summary stats ---
+"$skill/scripts/board.sh" >"$out" 2>&1
+check "board.sh exits 0" 0 $?
+contains "  ...has ## summary section" "## summary" "$out"
+# Backlog: 1 epic (todo), 2 stories (todo), 2 tasks (1 done, 1 todo) —
+# the parallel-created tasks exist on disk but are not committed to trunk.
+# Parallells are not committed so board.sh (reads trunk) only sees 5 tickets.
+board_summary=$(sed -n '/^## summary$/,/^## /{/^## summary$/d;/^STATUS/d;/^$/d;p}' "$out" | head -6)
+if [[ "$(echo "$board_summary" | grep -c . || true)" -eq 6 ]]; then
+  pass=$((pass+1)); echo "PASS: board summary has 6 status rows"
+else
+  fail=$((fail+1)); echo "FAIL: board summary should have 6 status rows, got:"; echo "$board_summary"
+fi
+if echo "$board_summary" | grep -qE '^total[[:space:]]+5$'; then
+  pass=$((pass+1)); echo "PASS: board summary total = 5"
+else
+  fail=$((fail+1)); echo "FAIL: board summary total expected 5, got:"; echo "$board_summary" | grep '^total'
+fi
+if echo "$board_summary" | grep -qE '^done[[:space:]]+1$'; then
+  pass=$((pass+1)); echo "PASS: board summary done = 1"
+else
+  fail=$((fail+1)); echo "FAIL: board summary done expected 1, got:"; echo "$board_summary" | grep '^done'
+fi
+
 echo
 echo "=== $pass passed, $fail failed ==="
 if [[ $fail -eq 0 ]]; then
