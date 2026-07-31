@@ -43,9 +43,9 @@ All acceptance criteria checked against the updated `skills/planr/SKILL.md`:
 
 ## Review
 
-**Reviewer:** The Clanker (independent review subagent)
-**Date:** 2026-07-30
-**Verdict:** approved
+verdict: approved
+reviewer: The Clanker
+date: 2026-07-30
 
 ### Acceptance criteria verification
 
