@@ -4,7 +4,7 @@ aliases: [troubleshooting-guide]
 kind: task
 parent: doc-improvements
 title: Add troubleshooting section to SKILL.md
-status: review
+status: done
 assignee: null
 created: 2026-07-30
 updated: 2026-07-30
