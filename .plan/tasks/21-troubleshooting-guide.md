@@ -43,6 +43,14 @@ Parent story: [[doc-improvements]] under [[supplementary-tooling]]. The existing
 - [x] Verified the section insertion point: `## Troubleshooting` appears after `## Scripts` and before `## Extracting this skill`
 - [x] No other parts of SKILL.md were changed
 
+## Review
+
+verdict: approved
+reviewer: The Clanker
+date: 2026-07-30
+
+Checked all 6 required troubleshooting topics (merge conflict, stale worktree, interrupted worker, worktree not found, dependency cycle, cross-platform sed) plus 2 bonus topics (refuse claim, refuse merge). Each entry has symptom, cause, and resolution. Imperative mood used throughout. Code snippets present. Section correctly placed after `## Scripts` and before `## Extracting this skill`. No other parts of SKILL.md modified.
+
 ## Notes
 
 - 2026-07-30 created
