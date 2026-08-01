@@ -98,3 +98,46 @@ All checks performed in worktree at `/home/exfed/projects/wt-port-merge-task`:
 
 - 2026-07-30 created. Depends on [[port-claim]] (frontmatter writer pattern)
   and [[port-review]] (verdict extraction). Do this last — it mutates trunk.
+
+## Review
+
+verdict: approved
+reviewer: The Clanker
+date: 2026-08-01
+
+Independent completion review (continued from a timed-out reviewer that had
+already verified the conflict path and was mid-check on flock interop):
+
+1. **Flock interop spot-check (throwaway repo)** — held `flock -x
+   <git-common-dir>/planr.lock` from bash for 3 s in the background; a second
+   acquire via the same `flock -x <lock> <cmd>` invocation the port uses
+   (`src/merge-task.ts:261`) blocked until release (~2.5 s remaining, elapsed
+   2.507 s) then proceeded; node-spawned flock acquired the identical lock
+   file. The port spawns `flock -x <git-common-dir>/planr.lock node -e` for
+   the whole merge mutation — same file and EXCLUSIVE mode as bash
+   `planr_lock_exclusive`, so TS and bash writers serialize.
+2. **npm test** — 105/105 passing (7 files), including the 11 new
+   `tests/merge-task.test.ts` cases: branch-missing, no-task-file, status
+   refusal, changes-requested refusal, no-review refusal (`found: 'none'`),
+   trailing-space verdict accepted, happy path flip+cleanup, conflict path
+   (worktree + branch preserved, trunk unchanged, rebase guidance printed),
+   CLI no-args, CLI refusal exit 1, CLI end-to-end.
+3. **Acceptance criteria mapping** — (a) CLI locates task file on the branch
+   and guards status=review + trimmed verdict==approved with exact bash
+   messages (`src/cli/merge-task.ts`, `src/merge-task.ts` guards); (b)
+   conflict path: `git merge --abort`, `git diff --name-only --diff-filter=U`
+   while merge in progress, rebase guidance, exit 1, worktree+branch intact;
+   (c) success: frontmatter-scoped insert-if-absent flip to `status: done` +
+   `updated: <date>`, commit, tolerant `worktree remove` + `branch -d`
+   (raw execFileSync, bash `|| true` parity); (d) last-`## Review`-wins
+   verdict parsing with trimming; (e) run-tests.sh pointer NOT added —
+   intentionally deferred to task 07 per the port-lint review decision
+   (checkbox correctly left unchecked); vitest suite covers the same
+   scenarios.
+4. **Build** — `tsc --noEmit` clean; `npm run build` bundles
+   `dist/cli/merge-task.cjs` with all 7 CLI entries (verified by the prior
+   reviewer).
+
+No blockers. Residual risks: conflict-path rebase guidance is instructional
+(the worker must rebase manually, same as bash); `flock` required at runtime
+(guarded with an explicit ENOENT error message).
