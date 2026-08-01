@@ -3,7 +3,7 @@ id: allow-parentless-tickets
 aliases: [allow-parentless-tickets]
 kind: task
 parent: port-scripts
-title: Allow parentless stories/tasks as intentional roots (explicit parent: null)
+title: "Allow parentless stories/tasks as intentional roots (explicit parent: null)"
 status: todo
 assignee: null
 created: 2026-07-30

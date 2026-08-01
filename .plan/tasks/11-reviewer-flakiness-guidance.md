@@ -3,7 +3,7 @@ id: reviewer-flakiness-guidance
 aliases: [reviewer-flakiness-guidance]
 kind: task
 parent: review-and-waiver
-title: Reviewer guidance: run flaky/network tests N times, no 'transient' without evidence
+title: "Reviewer guidance: run flaky/network tests N times, no 'transient' without evidence"
 status: todo
 assignee: null
 created: 2026-07-30

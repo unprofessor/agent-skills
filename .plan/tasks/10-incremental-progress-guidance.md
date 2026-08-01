@@ -3,7 +3,7 @@ id: incremental-progress-guidance
 aliases: [incremental-progress-guidance]
 kind: task
 parent: worker-resumption
-title: Worker guidance: commit findings to the task file during investigation
+title: "Worker guidance: commit findings to the task file during investigation"
 status: todo
 assignee: null
 created: 2026-07-30
