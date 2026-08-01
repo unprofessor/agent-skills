@@ -4,10 +4,10 @@ aliases: [port-new-ticket]
 kind: task
 parent: port-scripts
 title: Port new-ticket.sh to TS (new-ticket.ts + cli/new-ticket.ts)
-status: todo
+status: in_progress
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [port, new-ticket]
 depends_on: [port-lint]
 ---
