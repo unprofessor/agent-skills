@@ -4,10 +4,10 @@ aliases: [cleanup-and-docs]
 kind: task
 parent: port-scripts
 title: Remove dead bash parsers, delete block-style convention, update docs
-status: todo
+status: in_progress
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [cleanup, docs]
 depends_on: [port-merge-task]
 ---
