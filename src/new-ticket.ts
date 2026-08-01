@@ -1,10 +1,5 @@
 import { execFileSync } from "node:child_process";
-import {
-	readdirSync,
-	readFileSync,
-	mkdirSync,
-	existsSync,
-} from "node:fs";
+import { readdirSync, readFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 // ---- constants ----
@@ -149,7 +144,11 @@ process.stdout.write(p);
  * same path would always EEXIST.) The spawned flock child runs in the same
  * cwd/repo, so it operates on the right git-common-dir lock file.
  */
-function lockedAllocateAndWrite(dir: string, slug: string, content: string): string {
+function lockedAllocateAndWrite(
+	dir: string,
+	slug: string,
+	content: string,
+): string {
 	const lp = lockPath();
 	mkdirSync(dirname(lp), { recursive: true });
 
@@ -176,9 +175,16 @@ function lockedAllocateAndWrite(dir: string, slug: string, content: string): str
 			},
 		);
 	} catch (err: unknown) {
-		const e = err as { stderr?: string | Buffer; code?: string; status?: number };
+		const e = err as {
+			stderr?: string | Buffer;
+			code?: string;
+			status?: number;
+		};
 		const stderr = typeof e.stderr === "string" ? e.stderr : "";
-		const lines = stderr.trim().split("\n").filter((l) => l.length > 0);
+		const lines = stderr
+			.trim()
+			.split("\n")
+			.filter((l) => l.length > 0);
 		// Our child exits 2 (already exists) / 3 (prefix collision) with a
 		// single clean message on stderr — surface exactly that (matches the
 		// bash output format). Unexpected child crashes (e.g. EACCES) fall
@@ -187,7 +193,9 @@ function lockedAllocateAndWrite(dir: string, slug: string, content: string): str
 			throw new Error(lines[lines.length - 1]!.trim());
 		}
 		if (e.code === "ENOENT") {
-			throw new Error("planr: 'flock' (util-linux) is required for safe concurrent access to .plan");
+			throw new Error(
+				"planr: 'flock' (util-linux) is required for safe concurrent access to .plan",
+			);
 		}
 		throw new Error(
 			`flock/child failed (exit ${e.status ?? "?"}): ${
