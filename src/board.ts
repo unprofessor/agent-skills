@@ -18,9 +18,7 @@ export interface BoardInput {
 // ---- helpers ----
 
 /** Build a lookup map: slug → status (from trunk tickets, all kinds). */
-function trunkStatusMap(
-	tickets: ParsedTicket[],
-): Map<string, string> {
+function trunkStatusMap(tickets: ParsedTicket[]): Map<string, string> {
 	const m = new Map<string, string>();
 	for (const t of tickets) {
 		m.set(t.id, t.status);
@@ -29,10 +27,7 @@ function trunkStatusMap(
 }
 
 /** Compute BLOCKED-BY for a task: slugs of unmet depends_on. */
-function blockedBy(
-	task: ParsedTicket,
-	statusMap: Map<string, string>,
-): string {
+function blockedBy(task: ParsedTicket, statusMap: Map<string, string>): string {
 	if (!task.depends_on || task.depends_on.length === 0) return "";
 	const unmet: string[] = [];
 	for (const dep of task.depends_on) {

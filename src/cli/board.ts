@@ -103,7 +103,9 @@ function readInFlightBranches(): BranchStatus[] {
 			continue;
 		}
 		const taskFile = files.find((f) => {
-			const pattern = new RegExp(`/[0-9]+-${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.md$`);
+			const pattern = new RegExp(
+				`/[0-9]+-${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.md$`,
+			);
 			return pattern.test(f);
 		});
 		if (!taskFile) {
