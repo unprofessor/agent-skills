@@ -8,7 +8,9 @@ const planDir = process.env.PLANR_DIR ?? ".plan";
 
 function main(): void {
 	// Stub: just prove the chain works.
-	console.log(`[board] trunk=${trunk} planDir=${planDir} args=[${args.join(", ")}]`);
+	console.log(
+		`[board] trunk=${trunk} planDir=${planDir} args=[${args.join(", ")}]`,
+	);
 }
 
 main();

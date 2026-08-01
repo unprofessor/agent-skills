@@ -7,7 +7,9 @@ const trunk = process.env.PLANR_TRUNK ?? "main";
 const planDir = process.env.PLANR_DIR ?? ".plan";
 
 function main(): void {
-	console.log(`[lint] trunk=${trunk} planDir=${planDir} args=[${args.join(", ")}]`);
+	console.log(
+		`[lint] trunk=${trunk} planDir=${planDir} args=[${args.join(", ")}]`,
+	);
 }
 
 main();
