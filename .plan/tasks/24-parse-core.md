@@ -95,6 +95,67 @@ All checks performed in worktree at `/home/exfed/projects/wt-parse-core`:
 One deviation: `@types/node` was added as a devDependency (needed for
 `node:fs`/`node:path`/`node:url` import types used in test fixtures).
 
+## Review
+
+verdict: approved
+
+The Clanker re-verified every acceptance item independently:
+
+### Acceptance criteria
+
+1. **src/parse.ts exports 5 pure functions** — Confirmed. All five exported
+   with `export function`: `splitFrontmatter`, `parseFrontmatter`,
+   `extractWikiLinks`, `extractSection`, `extractLastReviewVerdict`. Signatures
+   match spec exactly. `splitFrontmatter` reads only first `---` block (lines
+   10-11). `extractWikiLinks` strips fenced code blocks (both backtick and
+   tilde) before scanning (line 72-74). No IO, all pure.
+
+2. **src/ticket.ts types** — Confirmed. `Kind` is `const` object + union
+   (lines 13-17), NOT enum (`grep -rn 'enum ' src/ tests/` returns empty).
+   `Status` is string union (line 21). `ParsedTicket` interface has all 5
+   scalars + `depends_on`/`aliases`/`links`/`raw` (lines 25-35). `parseTicket`
+   composer (line 40) handles block-style arrays, single-string deps, and
+   quoted YAML values.
+
+3. **tests/fixtures/ — 5 files** — Confirmed:
+   - `canonical-task.md` — standard task with inline `depends_on`
+   - `obsidian-reformatted.md` — block-style `depends_on`, quoted
+     `status: "done"`, block `aliases`
+   - `body-thematic-break.md` — body contains `---` with fake frontmatter
+   - `multiple-reviews.md` — two `## Review` blocks, second says `approved`
+   - `wiki-links-edge-cases.md` — aliased, heading, both, plain links, and
+     links inside both backtick and tilde fenced code blocks
+
+4. **tests/parse.test.ts — 22 tests** — Confirmed. 5 + 3 + 2 + 4 + 3 + 5 = 22.
+   Covers: block-style `depends_on` → same array (line 73-79), quoted
+   `"done"` → `done` (line 81), body `---` no re-entry (line 107-113),
+   wiki-link in code fence NOT extracted (lines 99-105 for backtick,
+   wiki-links-edge-cases.md also covers tilde), last review verdict wins
+   trimmed (line 161-164).
+
+5. **npm test** — `vitest run` passes 22/22 ✓
+
+6. **npm run build** — esbuild bundles `src/cli/*.ts` successfully. The CLI
+   entry point is currently a placeholder (`src/cli/placeholder.ts`), so the
+   output (780B) does not include parse/ticket code — but the build
+   infrastructure works and the parser is bundlable (no types break esbuild).
+   TypeScript compiles cleanly (`tsc --noEmit` no errors).
+
+### Deviation
+
+- `@types/node` added as devDep (needed for `node:fs`/`node:path`/`node:url`
+  imports in test fixture loading). Acceptable — tests cannot load fixtures
+  without Node types.
+
+### Residual risks
+
+- The `extractWikiLinks` regex `[^\]|#]+` in the capture group disallows `|`
+  and `#` in slugs — correct for Obsidian but may reject valid page names in
+  other wiki dialects. Not a blocker for this task.
+- The `splitFrontmatter` closing `---` detection uses `trimEnd()` — a line
+  with trailing whitespace after `---` still closes. Deliberate and covered
+  by Obsidian compatibility.
+
 ## Notes
 
 - 2026-08-01 created. Depends on [[ts-project-setup]] for the build
