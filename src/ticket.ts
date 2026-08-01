@@ -18,7 +18,7 @@ export type Kind = (typeof Kind)[keyof typeof Kind];
 
 // ---- Status: union of known status strings ----
 
-export type Status = "todo" | "in_progress" | "review" | "done";
+export type Status = "todo" | "in_progress" | "review" | "done" | "blocked";
 
 // ---- ParsedTicket: the typed shape every script consumes ----
 
