@@ -4,10 +4,10 @@ aliases: [git-wrappers]
 kind: task
 parent: cli-scaffolding
 title: Implement typed git wrappers (src/git.ts)
-status: review
+status: done
 assignee: null
 created: 2026-08-01
-updated: 2026-08-01T07:15:00Z
+updated: 2026-08-01
 tags: [git, wrappers, typescript]
 depends_on: [ts-project-setup]
 ---
