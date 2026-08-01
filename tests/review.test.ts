@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import {
-	execFileSync,
-	type ExecFileSyncOptions,
-} from "node:child_process";
+import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -133,9 +130,7 @@ verdict: approved
 		);
 		expect(validationSection).not.toContain("\n\n\n");
 		expect(output).toContain("--- diff vs main ---");
-		expect(output).toContain(
-			"--- reviewer guidance ---",
-		);
+		expect(output).toContain("--- reviewer guidance ---");
 		expect(output).toContain("verdict: approved");
 	});
 });

@@ -32,7 +32,9 @@ export function generateReviewBrief(input: ReviewInput): string {
 
 	// Find the task file on the branch (matches /NN-slug.md) like bash review.sh
 	const taskFiles = lsTreeMd(branch, `${planDir}/tasks`);
-	const taskPattern = new RegExp(`/[0-9]+-${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}.md$`);
+	const taskPattern = new RegExp(
+		`/[0-9]+-${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}.md$`,
+	);
 	const taskFile = taskFiles.find((f) => taskPattern.test(f));
 	if (!taskFile) {
 		throw new Error(`no task file for '${slug}' on ${branch}`);
@@ -55,8 +57,7 @@ export function generateReviewBrief(input: ReviewInput): string {
 		}
 	}
 
-	const displayWt =
-		worktreePath ?? `(none — checkout ${branch} to review)`;
+	const displayWt = worktreePath ?? `(none — checkout ${branch} to review)`;
 
 	// Read the task file from the branch
 	const blob = showRef(branch, taskFile);
