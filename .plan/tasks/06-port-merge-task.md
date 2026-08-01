@@ -4,10 +4,10 @@ aliases: [port-merge-task]
 kind: task
 parent: port-scripts
 title: Port merge-task.sh to TS (merge-task.ts + cli/merge-task.ts)
-status: todo
+status: in_progress
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [port, merge, mutating]
 depends_on: [port-claim, port-review]
 ---
