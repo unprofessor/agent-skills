@@ -4,7 +4,7 @@ aliases: [cli-shims]
 kind: task
 parent: cli-scaffolding
 title: CLI entry stubs, .sh shims, build config, and smoke test
-status: todo
+status: in_progress
 assignee: null
 created: 2026-08-01
 updated: 2026-08-01
