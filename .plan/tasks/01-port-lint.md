@@ -4,10 +4,10 @@ aliases: [port-lint]
 kind: task
 parent: port-scripts
 title: Port lint.sh to TS (lint.ts + cli/lint.ts)
-status: review
+status: done
 assignee: null
 created: 2026-07-30
-updated: 2026-08-01T07:35:00Z
+updated: 2026-08-01
 tags: [port, lint]
 depends_on: [cli-scaffolding]
 ---
