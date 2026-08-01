@@ -1,6 +1,6 @@
 ---
 name: planr
-description: Use this skill when the developer says 'we need to plan this', 'split into tasks', 'what's the dependency order', 'who's reviewing', or 'setup worktrees'. It provides trunk-based backlog management for coordinating multiple agents: a leader maintains epics, stories, and tasks as one file per ticket on trunk; each task gets one worker in a dedicated git worktree branch; a reviewer independently verifies before merge. Tickets form a dependency graph (any ticket gates any other) and cross-reference with [[wiki-links]]. Also use when maintaining a backlog, dispatching a reviewer, reviewing a task, picking up implementation, re-prioritizing, or linting for dangling references and cycles.
+description: "Use this skill when the developer says 'we need to plan this', 'split into tasks', 'what's the dependency order', 'who's reviewing', or 'setup worktrees'. It provides trunk-based backlog management for coordinating multiple agents: a leader maintains epics, stories, and tasks as one file per ticket on trunk; each task gets one worker in a dedicated git worktree branch; a reviewer independently verifies before merge. Tickets form a dependency graph (any ticket gates any other) and cross-reference with [[wiki-links]]. Also use when maintaining a backlog, dispatching a reviewer, reviewing a task, picking up implementation, re-prioritizing, or linting for dangling references and cycles."
 ---
 
 # Planr — trunk-based backlog for multi-agent work
@@ -69,41 +69,53 @@ review-ready work is visible before merge — no checkout required.
 ## Leader workflow
 
 1. With the developer, plan the work. Read the current board:
+
    ```bash
    ./scripts/board.sh                       # backlog (trunk) + in-flight (branches)
    ```
+
 2. Create tickets (epics/stories on trunk; tasks under a story, with
    `depends_on` set for ordering). Use the helper so slug/prefix
    allocation is consistent:
+
    ```bash
    ./scripts/new-ticket.sh epic   v1-ship-self-hosted    "Ship v1 self-hostable hotcell"
    ./scripts/new-ticket.sh story  network-firewall       "Network firewall"  v1-ship-self-hosted
    ./scripts/new-ticket.sh task   http-connect-proxy     "HTTP CONNECT allowlist proxy"  network-firewall
    ```
+
    Then fill the body (Goal / Context / Acceptance / Notes) and edit
    `depends_on:` in frontmatter for ordering — a ticket may depend on **any**
    other ticket, not just siblings (cross-story and cross-epic gates are
    fine). After editing frontmatter, lint and commit:
+
    ```bash
    ./scripts/lint.sh   # dangling parents/deps, duplicate slugs, dependency cycles
    git commit ...
    ```
+
    (`new-ticket.sh` and `claim.sh` also run the lint informationally.)
 3. Dispatch workers — one per **ready** task (deps all `done`) — each in its
    own worktree:
+
    ```bash
    ./scripts/claim.sh http-connect-proxy   # creates ../wt-http-connect-proxy on plan/http-connect-proxy; refuses if deps unmet
    ```
+
    Hand the worktree path to the worker agent.
 4. When the board shows a task `review` on its branch, dispatch a reviewer:
+
    ```bash
    ./scripts/review.sh http-connect-proxy   # prints branch, worktree, acceptance, diff
    ```
+
    Hand that to a fresh-context review agent.
 5. When the reviewer records `verdict: approved`, merge:
+
    ```bash
    ./scripts/merge-task.sh http-connect-proxy   # checks status=review + approved verdict; merges; flips to done
    ```
+
    On a merge conflict it aborts and prints rebase guidance for the worker.
    Other in-flight task branches merge independently and conflict-free in
    `.plan/`.
@@ -166,6 +178,7 @@ reasoning.
    and the diff (`scripts/review.sh` prints it). **Run the acceptance checks
    yourself** in the worktree.
 3. **Edit only the task file** — never code. Add a `## Review` section:
+
    ```markdown
    ## Review
    verdict: approved          # or: changes-requested
@@ -173,6 +186,7 @@ reasoning.
    date: 2025-07-29
    <what you checked and the result>
    ```
+
 4. If `approved`: leave `status: review`, commit, hand back to the leader
    to merge.
 5. If `changes-requested`: set `verdict: changes-requested`, **flip
@@ -200,6 +214,7 @@ links from a `## Notes` log to the ticket that triaged it. Two hard rules:
   gating live only in `depends_on`, hierarchy only in `parent`. `lint.sh`
   *warns* (never errors) when a link matches no ticket slug.
 - **Backlinks are derived, never stored** — same philosophy as roll-up:
+
   ```bash
   grep -rn '\[\[http-connect-proxy' .plan/   # who references this ticket?
   ```
@@ -215,7 +230,7 @@ only `scripts/board.sh` sees.
 ## Scripts
 
 | Script | Who | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `scripts/board.sh` | all | Read-only board: backlog from trunk + in-flight/review-ready from `plan/*` branches |
 | `scripts/lint.sh` | leader | Backlog checks: dangling `parent`/`depends_on`, duplicate slugs, dependency cycles (errors); unresolved `[[links]]` (warnings). Lints the working tree, or a ref (`lint.sh main`) |
 | `scripts/new-ticket.sh` | leader | Scaffold a ticket file with next sort-hint + slug; verifies the parent exists; runs `lint.sh` |
@@ -237,12 +252,14 @@ after changing any script.
 **Symptom:** `merge-task.sh` prints "merge conflict in: <file>" and aborts.
 **Cause:** Another task's branch merged since this worktree was cut, touching the same code.
 **Resolution:** The worktree and branch are preserved. Rebase onto fresh trunk:
+
 ```bash
 cd $wt                        # the worktree path printed during merge-task
 # or find it: git worktree list
 git rebase main               # resolve conflicts, git add, git rebase --continue
 # then the leader re-runs: scripts/merge-task.sh <slug>
 ```
+
 This is a real signal the tasks overlap — consider re-splitting the work if
 rebases keep hurting.
 
@@ -255,6 +272,7 @@ or deleted. `git worktree list` shows the worktree but `git branch` does not.
 **Cause:** The merge succeeded but the worktree removal was interrupted
 (e.g., agent disconnected mid-merge).
 **Resolution:**
+
 ```bash
 # Remove the stale worktree
 git worktree prune
@@ -268,6 +286,7 @@ git worktree remove ../wt-<slug> -f   # if prune alone doesn't clear it
 **Symptom:** A worktree branch exists with `status: in_progress` but the
 worker agent disconnected. The leader needs to recover progress.
 **Resolution:**
+
 1. Read the task file in the worktree: `cat .plan/tasks/<NN>-<slug>.md` —
    check the `## Notes` section for findings already logged.
 2. Check `git log` in the worktree for incremental commits the worker made.
@@ -287,6 +306,7 @@ not found."
 **Cause:** The leader dispatched the reviewer without the worktree path, or
 the reviewer is running in a different shell session.
 **Resolution:**
+
 ```bash
 # The leader runs: scripts/review.sh <slug>
 # This prints the worktree path, branch, acceptance, and diff.
@@ -294,6 +314,7 @@ the reviewer is running in a different shell session.
 # Fallback if review.sh is unavailable:
 git worktree list
 ```
+
 The worktree is always at `../wt-<slug>/` relative to the repo root.
 
 ---
@@ -301,13 +322,16 @@ The worktree is always at `../wt-<slug>/` relative to the repo root.
 ### Dependency cycle detected
 
 **Symptom:** `scripts/lint.sh` prints:
+
 ```
 depends_on cycle: A → B → C → A — nothing in the cycle can ever be claimed
 ```
+
 **Cause:** Two or more tickets list each other in `depends_on`, forming a
 loop. Tickets in a cycle can never all be `done` because each waits on
 another.
 **Resolution:**
+
 1. Read the cycle path from the error (e.g., `http-connect → firewall → http-connect`).
 2. One of the edges is wrong — the dependency goes the opposite direction
    or shouldn't exist.
@@ -324,12 +348,14 @@ another.
 **Cause:** BSD `sed` (macOS default) uses different flag syntax than GNU
 `sed` (Linux, WSL, Git for Windows). The scripts are written for GNU sed.
 **Resolution:**
+
 ```bash
 # Install GNU sed
 brew install gnu-sed
 # Make it the default for sed calls
 export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
 ```
+
 After this, `sed` invocations in scripts work as written. The scripts
 shipped with planr use GNU sed features (`-E` extended regex, `+` repetition)
 that BSD sed does not support.
@@ -339,13 +365,16 @@ that BSD sed does not support.
 ### "refuse claim" — task has unfinished dependencies
 
 **Symptom:** `scripts/claim.sh` prints:
+
 ```
 refuse claim: '<slug>' has unfinished depends_on: <list>
 resolve or complete these first, or have the leader update depends_on.
 ```
+
 **Cause:** One or more of the task's `depends_on` prerequisites are not
 `status: done` on trunk.
 **Resolution:**
+
 - Check `scripts/board.sh` for the blockers' statuses.
 - Dispatch those tasks first, or ask the leader to update `depends_on` if
 the dependency is incorrect.
@@ -355,15 +384,18 @@ the dependency is incorrect.
 ### "refuse merge" — task not in review or no approval
 
 **Symptom:** `scripts/merge-task.sh` prints:
+
 ```
 refuse merge: task '<slug>' status is '<status>', must be 'review'
 # or:
 refuse merge: no approved review verdict on '<slug>'
 ```
+
 **Cause:** The task hasn't been validated and flipped to `status: review`
 by the worker, or hasn't been reviewed and approved by an independent
 reviewer.
 **Resolution:**
+
 - If status isn't `review`: the worker must self-validate and set
   `status: review` first.
 - If status is `review` but no approved verdict: dispatch a reviewer via
