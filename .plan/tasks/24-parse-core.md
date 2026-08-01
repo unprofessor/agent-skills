@@ -4,10 +4,10 @@ aliases: [parse-core]
 kind: task
 parent: parser-foundation
 title: Implement parse.ts, ticket.ts, fixtures, and vitest tests
-status: review
+status: done
 assignee: null
 created: 2026-08-01
-updated: 2026-08-01T07:10:00Z
+updated: 2026-08-01
 tags: [parser, types, fixtures, tests]
 depends_on: [ts-project-setup]
 ---
