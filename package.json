@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run --passWithNoTests",
-    "build": "esbuild src/cli/*.ts --bundle --platform=node --format=cjs --outdir=dist/cli --out-extension:.js=.cjs --external:yaml"
+    "build": "esbuild src/cli/*.ts --bundle --platform=node --format=cjs --outdir=skills/planr/dist/cli --out-extension:.js=.cjs"
   },
   "dependencies": {
     "yaml": "^2.7.1"

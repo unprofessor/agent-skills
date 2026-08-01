@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec node "$(dirname "$0")/../dist/cli/lint.cjs" "$@"
+exec node "$(dirname "$0")/../skills/planr/dist/cli/lint.cjs" "$@"

@@ -241,6 +241,13 @@ only `scripts/board.sh` sees.
 All scripts honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 `.plan`) env vars, so the scheme works in any repo without editing the skill.
 
+**Implementation:** all six scripts are TypeScript, bundled into
+`dist/cli/*.cjs`; the `.sh` files are thin shims (`exec node
+"$(dirname "$0")/../dist/cli/<name>.cjs" "$@"`) so invocation is unchanged.
+The bundle includes the YAML parser — no `node_modules` is needed at
+runtime. `npm run build` (dev-time) regenerates `dist/`; the shipped skill
+folder carries its own `dist/` so the copy stays self-contained.
+
 `tests/run-tests.sh` exercises the scripts end-to-end in a throwaway git repo
 (creation guards, cross-story dependency gating, every lint class); run it
 after changing any script.
@@ -407,3 +414,10 @@ This skill is self-contained and project-agnostic. To use it in another
 project, copy `.agents/skills/planr/` into that repo's `.agents/skills/` (or
 `~/.agents/skills/` for global use). The `.plan/` directory it produces is the
 only project-specific data.
+
+**Build step (dev-time only):** the skill ships as compiled JS. In the
+source repo, run `npm install && npm run build` to regenerate `dist/cli/*.cjs`
+(esbuild bundles the TypeScript + YAML parser into each CLI). The skill folder
+includes its built `dist/`, so the copy at the target is fully self-contained
+— no `npm install` or build is needed there. If you are copying from a
+fresh clone, build first, then copy the folder *including* its `dist/`.

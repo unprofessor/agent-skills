@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { claimTask } from "../src/claim.js";
 
-const CLI = join(__dirname, "..", "dist", "cli", "claim.cjs");
+const CLI = join(__dirname, "..", "skills", "planr", "dist", "cli", "claim.cjs");
 
 function git(args: string[], opts: { cwd?: string } = {}): string {
 	return execFileSync("git", args, {
