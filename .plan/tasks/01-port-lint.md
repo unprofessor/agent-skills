@@ -98,7 +98,7 @@ Also fixed: `Status` type in `src/ticket.ts` was missing `"blocked"` — added i
 
 ## Review
 
-### Verdict: approved
+verdict: approved
 
 ### What I checked
 
