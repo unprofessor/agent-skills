@@ -4,10 +4,10 @@ aliases: [port-new-ticket]
 kind: task
 parent: port-scripts
 title: Port new-ticket.sh to TS (new-ticket.ts + cli/new-ticket.ts)
-status: in_progress
+status: review
 assignee: null
 created: 2026-07-30
-updated: 2026-08-01T07:55:00Z
+updated: 2026-08-01T10:30:00Z
 tags: [port, new-ticket]
 depends_on: [port-lint]
 ---
@@ -55,10 +55,16 @@ All checks performed in worktree at `/home/exfed/projects/wt-port-new-ticket`:
    `^[a-z0-9]+(-[a-z0-9]+)*$`), `kindToSubdir`, `isValidKind`,
    `parentExists` (scans epics/stories/tasks), `allocatePrefix` (reads
    highest NN, returns NN+1 zero-padded), `createTicket` (orchestrates
-   validation, template substitution, exclusive-locked prefix allocation
-   and file write). Lock mechanism uses O_EXCL file creation with retry
-   (200 attempts, 50ms backoff) — compatible with concurrent bash
-   `new-ticket.sh` invocations sharing the same mutex pattern.
+   validation, template substitution, locked prefix allocation and file
+   write). Lock mechanism (REVISED after review): the allocate-prefix +
+   write + verify critical section runs in a spawned
+   `flock -x <git-common-dir>/planr.lock node -e …` child — the SAME file
+   and mechanism bash `_lock.sh` uses, so TS and bash writers serialize
+   against each other. The previous O_EXCL `.mutex` retry lock was
+   REMOVED: it did NOT coordinate with bash's advisory flock (the earlier
+   Validation claim that it was "compatible with concurrent bash
+   new-ticket.sh invocations" was empirically false — see the Review
+   blocker).
 2. **src/cli/new-ticket.ts** — CLI entry (79 lines). Parses argv
    (kind/slug/title/parent), resolves templates from skill dir
    (`skills/planr/templates/`), calls `createTicket`, runs informational
@@ -84,6 +90,27 @@ All checks performed in worktree at `/home/exfed/projects/wt-port-new-ticket`:
 7. **run-tests.sh** — new-ticket assertions pass unchanged (the bash
    `run-tests.sh` still tests the bash `new-ticket.sh`; the TS port
    produces identical behavior).
+8. **Post-fix re-validation (flock replacement)** —
+   - `npm test` 87/87 (22 parse + 18 lint + 9 board + 3 review + 35
+     new-ticket); `npm run build` produces `dist/cli/new-ticket.cjs`
+     (14.4 KB).
+   - **Concurrency (bash + TS, mixed)**: 30 parallel invocations (15 bash
+     `~/.agents/skills/planr/scripts/new-ticket.sh` + 15 TS shim) in a
+     throwaway git repo → all 30 exit 0, 30 files with UNIQUE prefixes
+     01–30, zero duplicate prefixes, zero "internal error" stderr lines.
+     (Before the fix the reviewer measured 27 unique prefixes and 3 bash
+     deaths under the same load.)
+   - **Concurrency (TS + TS)**: 10 additional parallel TS invocations →
+     all exit 0, prefixes continue advancing uniquely.
+   - **Shared lock file verified**: both writers lock
+     `<git-common-dir>/planr.lock` (confirmed in the throwaway repo).
+   - CLI e2e unchanged: bad slug (uppercase/trailing/double-hyphen),
+     missing parent, dangling parent all rejected exit 1 with the same
+     messages; happy path creates the file with correct frontmatter;
+     stdout is exactly one line. Child failure surfaces loudly
+     (exit 1) with a clean message for the intentional exit codes
+     (already-exists / prefix collision) and a generic
+     `flock/child failed` otherwise.
 
 ## Review
 
@@ -148,3 +175,11 @@ verdict: changes-requested
 ## Notes
 
 - 2026-07-30 created. Depends on [[port-lint]] (calls lint informationally).
+- 2026-08-01 fix: replaced the O_EXCL `.mutex` retry lock with a real
+  `flock -x` on `<git-common-dir>/planr.lock` (same file bash `_lock.sh`
+  uses), taken by spawning a `flock … node -e` child for the critical
+  section (fd inheritance is not an issue for a spawned flock process —
+  the kernel lock is attached to the flock process itself). Removed the
+  stale-mutex-file wedge risk noted by the reviewer (flock auto-releases
+  on process death). Re-verified 30/30 unique prefixes under mixed
+  bash+TS concurrency.

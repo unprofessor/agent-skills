@@ -2,12 +2,8 @@ import { execFileSync } from "node:child_process";
 import {
 	readdirSync,
 	readFileSync,
-	writeFileSync,
 	mkdirSync,
 	existsSync,
-	openSync,
-	closeSync,
-	unlinkSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
 
@@ -82,7 +78,7 @@ export function allocatePrefix(dir: string): string {
 	return String(highest + 1).padStart(2, "0");
 }
 
-// ---- locking (flock, compatible with bash _lock.sh) ----
+// ---- locking (flock, interoperable with bash _lock.sh) ----
 
 function gitCommonDir(): string {
 	return execFileSync("git", ["rev-parse", "--git-common-dir"], {
@@ -95,51 +91,111 @@ function lockPath(): string {
 	return join(gd, "planr.lock");
 }
 
-function flockExclusive<T>(fn: () => T): T {
+/**
+ * The allocate-prefix + write + verify critical section, as a self-contained
+ * CommonJS script. Runs in a spawned `flock ... node -e` child so the kernel
+ * lock is held by the flock process for the whole section. The kernel lock is
+ * attached to the flock process, so the child does not need to inherit any fd
+ * (fds opened in the parent are not inherited by Node children anyway).
+ * Inputs arrive via env vars; the created path goes to stdout; errors go to
+ * stderr with a non-zero exit.
+ */
+const LOCKED_WRITE_SCRIPT = `
+const fs = require("node:fs");
+const path = require("node:path");
+
+const dir = process.env.PLANR_LOCK_DIR;
+const slug = process.env.PLANR_LOCK_SLUG;
+const content = process.env.PLANR_LOCK_CONTENT;
+
+let highest = 0;
+if (fs.existsSync(dir)) {
+  for (const e of fs.readdirSync(dir)) {
+    const m = e.match(/^(\\d+)-/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > highest) highest = n;
+    }
+  }
+}
+
+const nn = String(highest + 1).padStart(2, "0");
+const p = path.join(dir, nn + "-" + slug + ".md");
+
+if (fs.existsSync(p)) {
+  process.stderr.write("already exists: " + p + "\\n");
+  process.exit(2);
+}
+
+fs.writeFileSync(p, content, "utf-8");
+
+const entries = fs.readdirSync(dir);
+const count = entries.filter((e) => e.startsWith(nn + "-")).length;
+if (count !== 1) {
+  process.stderr.write("internal error: prefix " + nn + " is shared by " + count + " files in " + dir + " after creating " + p + "\\n");
+  process.exit(3);
+}
+
+process.stdout.write(p);
+`;
+
+/**
+ * Allocate the next sort-hint prefix and write the ticket file under an
+ * exclusive `flock` on <git-common-dir>/planr.lock — the SAME file and
+ * mechanism bash _lock.sh uses, so TS and bash writers (new-ticket.sh,
+ * merge-task.sh) serialize against each other. (An O_EXCL mutex file on a
+ * different path cannot coordinate with advisory flock: bash's
+ * \`exec 9>"$lf"\` leaves the file on disk, so existence-based locking on the
+ * same path would always EEXIST.) The spawned flock child runs in the same
+ * cwd/repo, so it operates on the right git-common-dir lock file.
+ */
+function lockedAllocateAndWrite(dir: string, slug: string, content: string): string {
 	const lp = lockPath();
 	mkdirSync(dirname(lp), { recursive: true });
 
-	// Use flock on the file path (not an fd number) for cross-process
-	// compatibility. We hold the lock by running a no-op command under
-	// flock, then do our work while the lock fd is still held in a
-	// background process. This is simpler: just use O_EXCL file creation
-	// as a mutex with retry.
-	//
-	// The bash _lock.sh uses `exec 9>"$lf" && flock -x 9` which only
-	// works because fd 9 is opened in the current shell process. Node
-	// child processes don't inherit non-stdio fds, so we use a
-	// create-exclusive retry lock instead.
-	const mutexFile = `${lp}.mutex`;
-
-	// Retry loop with backoff
-	for (let attempt = 0; attempt < 200; attempt++) {
-		try {
-			// Atomic exclusive create — fails if file already exists
-			const lockFd = openSync(mutexFile, "wx");
-			try {
-				return fn();
-			} finally {
-				closeSync(lockFd);
-				try {
-					unlinkSync(mutexFile);
-				} catch {
-					/* best effort */
-				}
-			}
-		} catch (err: unknown) {
-			if (
-				typeof err === "object" &&
-				err !== null &&
-				(err as NodeJS.ErrnoException).code === "EEXIST"
-			) {
-				// Lock held by another process — wait and retry
-				execFileSync("sleep", ["0.05"]);
-				continue;
-			}
-			throw err;
+	let result: string;
+	try {
+		result = execFileSync(
+			"flock",
+			[
+				"-x",
+				lp,
+				process.execPath,
+				"--input-type=commonjs",
+				"-e",
+				LOCKED_WRITE_SCRIPT,
+			],
+			{
+				encoding: "utf-8",
+				env: {
+					...process.env,
+					PLANR_LOCK_DIR: dir,
+					PLANR_LOCK_SLUG: slug,
+					PLANR_LOCK_CONTENT: content,
+				},
+			},
+		);
+	} catch (err: unknown) {
+		const e = err as { stderr?: string | Buffer; code?: string; status?: number };
+		const stderr = typeof e.stderr === "string" ? e.stderr : "";
+		const lines = stderr.trim().split("\n").filter((l) => l.length > 0);
+		// Our child exits 2 (already exists) / 3 (prefix collision) with a
+		// single clean message on stderr — surface exactly that (matches the
+		// bash output format). Unexpected child crashes (e.g. EACCES) fall
+		// through to a generic failure instead of a node stack dump.
+		if ((e.status === 2 || e.status === 3) && lines.length > 0) {
+			throw new Error(lines[lines.length - 1]!.trim());
 		}
+		if (e.code === "ENOENT") {
+			throw new Error("planr: 'flock' (util-linux) is required for safe concurrent access to .plan");
+		}
+		throw new Error(
+			`flock/child failed (exit ${e.status ?? "?"}): ${
+				lines.length > 0 ? lines[lines.length - 1]!.trim() : String(err)
+			}`,
+		);
 	}
-	throw new Error(`timed out waiting for lock: ${mutexFile}`);
+	return result.trim();
 }
 
 // ---- template substitution ----
@@ -200,31 +256,9 @@ export function createTicket(
 		.replace(/__PARENT__/g, parent ?? "")
 		.replace(/__DATE__/g, today);
 
-	// Allocate prefix + write under exclusive lock (compatible with bash
-	// concurrent new-ticket.sh invocations sharing the same flock file).
-	const _path = flockExclusive(() => {
-		const nn = allocatePrefix(dir);
-		const p = join(dir, `${nn}-${slug}.md`);
-
-		if (existsSync(p)) {
-			throw new Error(`already exists: ${p}`);
-		}
-
-		writeFileSync(p, content, "utf-8");
-
-		// Defensive: re-scan for prefix collision (same as bash)
-		const entries = readdirSync(dir);
-		const count = entries.filter((e) => e.startsWith(`${nn}-`)).length;
-		if (count !== 1) {
-			throw new Error(
-				`internal error: prefix ${nn} is shared by ${count} files in ${dir} after creating ${p}`,
-			);
-		}
-
-		return p;
-	});
-
-	return _path;
+	// Allocate prefix + write under an exclusive flock on planr.lock — the
+	// same file bash _lock.sh locks, so TS and bash writers serialize.
+	return lockedAllocateAndWrite(dir, slug, content);
 }
 
 // ---- helpers ----
