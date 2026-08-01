@@ -4,7 +4,7 @@ aliases: [parse-core]
 kind: task
 parent: parser-foundation
 title: Implement parse.ts, ticket.ts, fixtures, and vitest tests
-status: todo
+status: in_progress
 assignee: null
 created: 2026-08-01
 updated: 2026-08-01
