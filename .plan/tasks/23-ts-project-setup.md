@@ -70,7 +70,7 @@ real CLI entries in the `cli-shims` task. No other source code was created.
 
 ## Review
 
-Verdict: **approved**
+verdict: approved
 
 ### Re-verified acceptance criteria
 
