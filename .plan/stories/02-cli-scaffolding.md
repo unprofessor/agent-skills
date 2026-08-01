@@ -4,10 +4,10 @@ aliases: [cli-scaffolding]
 kind: story
 parent: port-scripts-to-typescript
 title: CLI + git wrapper layer and .sh shims
-status: todo
+status: done
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [cli, git, distribution]
 depends_on: [parser-foundation]
 ---

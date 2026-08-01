@@ -4,10 +4,10 @@ aliases: [parser-foundation]
 kind: story
 parent: port-scripts-to-typescript
 title: Build the TS parser foundation (no scripts touched)
-status: todo
+status: done
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [parser, typescript, foundation]
 depends_on: []
 ---
@@ -48,13 +48,13 @@ js-yaml (smaller but no comment preservation). See
   `parseFrontmatter(fm) -> Record<string, unknown>` via `yaml.parse`;
   `extractWikiLinks(body) -> string[]` (regex `\[\[([^\]|#]+)(?:#…)?(?:\|…)?\]\]`,
   skipping fenced code blocks, stripping `|alias`/`#heading`, deduped);
-  `extractSection(body, name) -> string` (state machine on `^## `, returns
-  lines until the next `^## `, heading line excluded);
+  `extractSection(body, name) -> string` (state machine on `^##`, returns
+  lines until the next `^##`, heading line excluded);
   `extractLastReviewVerdict(body) -> string | null` (last `## Review` block
   wins, `verdict:` value trimmed).
 - [ ] `src/ticket.ts` exports typed shapes: `Kind` (`const` object + union, not
   enum), `Status`, `ParsedTicket` (the 5 read scalars + `depends_on: string[]`
-  + `aliases` + `links: string[]` + raw body).
+  - `aliases` + `links: string[]` + raw body).
 - [ ] `tests/fixtures/` includes: a canonical task; an **Obsidian-reformatted**
   fixture (block-style `depends_on`, sorted keys, quoted `status: "done"`,
   `aliases:` as block list); a fixture with a body `---` thematic break
