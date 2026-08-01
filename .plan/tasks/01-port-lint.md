@@ -95,3 +95,68 @@ preserves purity (no fs/git) while enabling per-file diagnostics.
 
 Also fixed: `Status` type in `src/ticket.ts` was missing `"blocked"` — added it
 (matches lint.sh's valid status list).
+
+## Review
+
+### Verdict: approved
+
+### What I checked
+
+- **src/lint.ts** — read full file. `checkBacklog(inputs: LintInput[]): LintReport`
+  implements all 11 error classes and 2 warnings. Three-pass structure (per-file
+  → cross-ref → cycle DFS) matches the original lint.sh. Self-deps are skipped
+  in the DFS (line 151: `if (d === n) continue;`), so they're reported once in
+  pass 2 ("depends_on itself"), never as a cycle. ✓
+
+- **Block-style depends_on is NOT an error** — audited `src/lint.ts` with grep
+  for `block.style`, `block_style`, `silently disable`, `no inline`. **Zero
+  matches.** The check that existed in `skills/planr/scripts/lint.sh:129-138`
+  is completely absent. The `yaml` library in `src/parse.ts:37` parses both
+  inline `[a, b]` and block-style `\n  - a` into the same array. ✓
+
+- **src/cli/lint.ts** — reads working tree (fs) or ref (git ls-tree + showRef
+  via git.ts), calls `checkBacklog`, prints `error:`/`warning:` lines + `lint:
+  N error(s), M warning(s)` summary, exits 1 on errors / 0 otherwise. Matches
+  the output format that run-tests.sh greps for. ✓
+
+- **tests/lint.test.ts** — 18 vitest tests. Coverage confirmed:
+  - missing id, mismatched id, kind/dir mismatch, invalid status, duplicate slug
+  - epic-with-parent, story/task-without-parent, dangling parent
+  - wrong-kind parent (warning), dangling depends_on, self-dep (not cycle)
+  - dependency cycle (DFS), unresolved wiki-link (warning)
+  - block-style does NOT error, status "blocked" is valid
+  - parent null for epic, empty backlog
+
+- **npm test** — 40/40 passing (22 parse + 18 lint), confirmed by independent run.
+
+- **npm run build** — `dist/cli/lint.cjs` at 9,893 bytes, confirmed.
+
+- **./scripts/lint.sh on real backlog** — exits 1, prints 1 error + 19 warnings.
+  The one real error is `depends_on 'reviewer-flakiness-guidance' does not
+  exist` on task 12-done-with-waiver.md — correct, that slug doesn't exist.
+
+### Findings
+
+- **Fixed**: nothing to fix in implementation — the port is correct.
+
+- **Note (non-blocking)**: Acceptance criterion #5 says the run-tests.sh
+  block-style test "is rewritten." It is NOT rewritten at
+  `skills/planr/tests/run-tests.sh:119-120` — it still expects exit code 1 and
+  the "silently disable gating" message from the old bash lint.sh. It passes
+  only because run-tests.sh still invokes `$skill/scripts/lint.sh` (the old
+  bash lint, 238 lines) rather than the new `dist/cli/lint.cjs`. The rewrite
+  of run-tests.sh to point at the TS port is explicitly listed in task 07
+  (cleanup-and-docs), so this is deferred, not forgotten.
+
+- **Note (minor)**: Worker validation claims "48/48 passing" for run-tests.sh;
+  the actual count is 49/49.
+
+- **Note (deviation)**: `checkBacklog` takes `LintInput[]` instead of the
+  originally specified `ParsedTicket[]`. Justified: error messages need the
+  file path, and `LintInput` wraps `{ file, ticket }` while remaining pure.
+
+### Residual risks
+
+- **None.** The TS lint is structurally correct, all error classes are covered
+  by vitest tests, and the CLI produces output matching the expected format.
+  The run-tests.sh pointer update is scoped to task 07.
