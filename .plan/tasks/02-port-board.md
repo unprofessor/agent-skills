@@ -82,6 +82,51 @@ branch reads use local `gitSilent`/`lsTreeMdSilent`/`showRefSilent` helpers
 with `stdio: ['pipe', 'pipe', 'ignore']` instead of mutating process.stderr.
 This is a CLI-only workaround; the shared `src/git.ts` is unchanged.
 
+## Review
+
+verdict: approved
+
+### Correct
+
+- `src/board.ts:127-137` — `renderBoard` is a pure function taking `BoardInput`,
+  returning `string`. Sections are built by filtering `trunkTickets` by kind.
+  Clean separation.
+- `src/board.ts:23-31` — `blockedBy` resolves `depends_on` slugs against the
+  full `trunkStatusMap` (all kinds), matching the cross-ticket behavior of
+  the original bash `board.sh`.
+- `src/board.ts:13-19` — `trunkStatusMap` builds a single flat lookup from
+  all trunk tickets regardless of kind, enabling cross-kind dep resolution.
+- `src/board.ts:101-111` — `renderSummary` correctly skips trunk task entries
+  that have an in-flight branch (de-duplication) and counts in-flight branch
+  statuses separately.
+- `src/cli/board.ts:55-68` — `gitSilent` / `lsTreeMdSilent` / `showRefSilent`
+  use `stdio: ['pipe', 'pipe', 'ignore']` to suppress stderr from stale
+  plan branches without mutating `process.stderr`, a clean workaround for
+  Node 25's frozen stderr.
+- `tests/board.test.ts` — 9 vitest tests covering empty board, all three
+  ticket sections, BLOCKED-BY with unmet deps, cleared BLOCKED-BY when deps
+  are `done`, cross-kind dep resolution (task→story), in-flight rendering,
+  column headers, null parent rendering as `-`, and blocked count in summary.
+- `npm test` — 49/49 passing (22 parse + 18 lint + 9 board).
+- `npm run build` — produces `dist/cli/board.cjs` (9.9 KB), exit 0.
+- `./scripts/board.sh` — produces correct columnar output matching the
+  `%-30s %-12s %-22s %-22s %s` ticket format, `%-30s %-14s %s` in-flight
+  format, `%-12s %s` summary format. Exit code 0.
+
+### Note
+
+- `src/board.ts:101-111` — Variables `tTodo`, `tIp` etc. are named with `t`
+  prefix ("task") but the loop counts all ticket kinds (epics, stories too).
+  Functionally harmless; consider renaming (e.g. `todoCount`) in a follow-up
+  cleanup pass.
+- `tests/board.test.ts` — No explicit test for the summary de-duplication
+  behavior (trunk task skipped when an in-flight branch exists). Low risk;
+  can be added during the cleanup-and-docs task.
+- The `blockedBy` function and the BLOCKED-BY column apply only to tasks
+  (`isTasks` flag in `renderSection`, `t.kind === 'task'` guard in
+  `renderSummary`). This matches the original board.sh behavior where only
+  tasks carry explicit `depends_on` and get a BLOCKED-BY column.
+
 ## Notes
 
 - 2026-07-30 created. Depends on [[port-lint]] (reuses the proven parser).
