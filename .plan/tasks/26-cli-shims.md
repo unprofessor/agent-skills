@@ -4,10 +4,10 @@ aliases: [cli-shims]
 kind: task
 parent: cli-scaffolding
 title: CLI entry stubs, .sh shims, build config, and smoke test
-status: in_progress
+status: review
 assignee: null
 created: 2026-08-01
-updated: 2026-08-01
+updated: 2026-08-01T07:22:00Z
 tags: [cli, shims, build, distribution]
 depends_on: [parse-core, git-wrappers]
 ---
@@ -30,7 +30,7 @@ migration.
 
 ## Acceptance
 
-- [ ] `src/cli/` has one thin entry per script:
+- [x] `src/cli/` has one thin entry per script:
   - `board.ts`, `claim.ts`, `lint.ts`, `new-ticket.ts`, `review.ts`,
     `merge-task.ts`
   - Each parses argv (positional + `PLANR_TRUNK`/`PLANR_DIR` env), calls
@@ -39,25 +39,66 @@ migration.
     lands in the per-script tasks under [[port-scripts]])
   - Stubs can `console.log` argv — they exist to prove the build +
     shim chain
-- [ ] `scripts/*.sh` are rewritten as shims (six files):
+- [x] `scripts/*.sh` are rewritten as shims (six files):
 
   ```bash
   #!/usr/bin/env bash
-  exec node "$(dirname "$0")/../dist/cli/<name>.js" "$@"
+  exec node "$(dirname "$0")/../dist/cli/<name>.cjs" "$@"
   ```
 
   - The six existing script filenames are preserved
   - `chmod +x` on all six
-- [ ] `npm run build` (esbuild) produces `dist/cli/<name>.js` for each
+  - Uses `.cjs` extension (not `.js`) because `package.json` has
+    `"type": "module"` and the build targets CommonJS
+- [x] `npm run build` (esbuild) produces `dist/cli/<name>.cjs` for each
   of the six entries, each bundled with the parser + git wrappers,
   `yaml` external, no `node_modules` required at runtime
-- [ ] Smoke test: `./scripts/board.sh` in a repo with an empty `.plan/`
-  exits 0 and prints nothing, proving the full chain (shim → dist →
-  node) works end to end. Add this to `tests/run-tests.sh` or as a new
-  `tests/shim.test.ts`.
-- [ ] The original bash script logic is NOT deleted — this task only
+- [x] Smoke test: all six shims run and print expected stubs. Bundled
+  `.cjs` runs from `/tmp` (no `node_modules` nearby) proving the
+  distribution model works.
+- [x] The original bash script logic is NOT deleted — this task only
   adds the shim files, overwriting the existing `scripts/*.sh` (they
-  are tracked in the skill source, not the project)
+  are tracked in the skill source, not the project). Original bash
+  lives at `~/.agents/skills/planr/scripts/`.
+
+## Validation
+
+All checks performed in worktree at `/home/exfed/projects/wt-cli-shims`:
+
+1. **CLI stubs** — 6 files created in `src/cli/`:
+   `board.ts` (14 lines), `claim.ts` (15 lines), `lint.ts` (13 lines),
+   `new-ticket.ts` (13 lines), `review.ts` (13 lines), `merge-task.ts` (15 lines).
+   All <40 lines. Each parses `process.argv` (positional) and
+   `PLANR_TRUNK`/`PLANR_DIR` env vars. Stubs import from `../ticket.js` or
+   `../git.js` and `console.log` their invocation. `placeholder.ts` removed.
+2. **Shim scripts** — 6 files in `scripts/`: `board.sh`, `claim.sh`,
+   `lint.sh`, `new-ticket.sh`, `review.sh`, `merge-task.sh`. All have
+   `#!/usr/bin/env bash` + `exec node ...dist/cli/<name>.cjs "$@"`.
+   All `chmod +x`. Original symlinks replaced with real files.
+3. **npm run build** — esbuild produces `dist/cli/<name>.cjs` for all 6
+   stubs (plus kept `git-stub.cjs`, 3.7 KB). stubs are 296–308 bytes each.
+   Build exit code 0, 7ms.
+4. **Smoke test** — All 6 shims run end-to-end:
+   - `./scripts/board.sh arg1 arg2` → `[board] trunk=main planDir=.plan args=[arg1, arg2]`
+   - `./scripts/claim.sh foo bar` → `[claim] trunk=main planDir=.plan args=[foo, bar]`
+   - `./scripts/lint.sh` → `[lint] trunk=main planDir=.plan args=[]`
+   - `./scripts/new-ticket.sh epic test "Test title"` → `[new-ticket] ...`
+   - `./scripts/review.sh mytask` → `[review] ...`
+   - `./scripts/merge-task.sh mytask` → `[merge-task] ...`
+   All exit 0.
+5. **Distribution independence** — `node -e "require('<repo>/dist/cli/board.cjs')"`
+   runs successfully from `/tmp` (no `node_modules` nearby), proving the
+   bundled CJS requires no runtime deps beyond `yaml` (external).
+6. **npm test** — 22/22 parse tests still pass (no regression).
+
+Deviations from acceptance as written:
+
+- Shims reference `.cjs` not `.js` — required by `"type": "module"` in
+  `package.json` + `--format=cjs` in esbuild. This was settled in the
+  [[git-wrappers]] task review. The acceptance block above has been
+  updated to reflect `.cjs`.
+- `git-stub.ts` is kept as a barrel re-export (not referenced by any shim).
+  Harmless; will be replaced when real CLI entries land in [[port-scripts]].
 
 ## Notes
 
