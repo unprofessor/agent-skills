@@ -4,12 +4,7 @@ import { parseTicket } from "../ticket.js";
 import { checkBacklog } from "../lint.js";
 import type { LintInput } from "../lint.js";
 import { lsTreeMd, showRef } from "../git.js";
-import {
-	readdirSync,
-	readFileSync,
-	existsSync,
-	statSync,
-} from "node:fs";
+import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { resolve, join } from "node:path";
 
 const args = process.argv.slice(2);
@@ -90,7 +85,9 @@ function main(): void {
 	}
 
 	if (report.errorCount > 0 || report.warningCount > 0) {
-		console.log(`lint: ${report.errorCount} error(s), ${report.warningCount} warning(s)`);
+		console.log(
+			`lint: ${report.errorCount} error(s), ${report.warningCount} warning(s)`,
+		);
 	}
 
 	if (report.errorCount > 0) {
