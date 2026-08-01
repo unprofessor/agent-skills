@@ -4,10 +4,10 @@ aliases: [port-claim]
 kind: task
 parent: port-scripts
 title: Port claim.sh to TS (claim.ts + cli/claim.ts)
-status: todo
+status: in_progress
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [port, claim, mutating]
 depends_on: [port-new-ticket, port-board]
 ---
