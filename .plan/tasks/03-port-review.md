@@ -4,10 +4,10 @@ aliases: [port-review]
 kind: task
 parent: port-scripts
 title: Port review.sh to TS (review.ts + cli/review.ts)
-status: todo
+status: in_progress
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [port, review]
 depends_on: [port-lint]
 ---
