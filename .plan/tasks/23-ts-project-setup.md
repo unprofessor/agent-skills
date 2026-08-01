@@ -67,3 +67,35 @@ real CLI entries in the `cli-shims` task. No other source code was created.
 - 2026-08-01 created. No source code in this task — just config + install.
   The `--external:yaml` flag on esbuild is intentional: eemeli/yaml is the
   one runtime dep that ships with the skill; everything else is bundled.
+
+## Review
+
+Verdict: **approved**
+
+### Re-verified acceptance criteria
+
+1. **package.json** — all fields confirmed:
+   - `devDependencies`: typescript, esbuild, vitest present
+   - `dependencies`: yaml present (eemeli/yaml, resolved as yaml@2.9.0)
+   - `scripts.test`: `vitest run --passWithNoTests`
+   - `scripts.build`: correct esbuild invocation with `--external:yaml`
+2. **tsconfig.json** — `erasableSyntaxOnly: true`, `strict: true`,
+   `module: nodenext`, `moduleResolution: nodenext`, `target: esnext`,
+   `outDir: dist`, `rootDir: src` all present. Extras (`declaration: true`,
+   `sourceMap: true`, `skipLibCheck: true`) are reasonable defaults.
+3. **npm install** — `npm ls --depth=0` shows all 4 packages resolved
+   (esbuild@0.25.12, typescript@5.9.3, vitest@3.2.7, yaml@2.9.0). No errors.
+4. **npm test** — vitest exits 0 with `No test files found, exiting with code 0`.
+5. **npm run build** — produces `dist/cli/placeholder.js` (780 bytes).
+   Smoke test `require()` from `/tmp` succeeds.
+
+### Findings
+
+- **Correct**: All 5 acceptance criteria pass independently. Config is minimal
+  and matches the declared intent.
+- **Note**: A `src/cli/placeholder.ts` (exporting `{}`) was created so esbuild's
+  glob has a file to bundle. This is documented as temporary and will be replaced
+  in cli-shims. This is a pragmatic workaround, not a deviation from acceptance.
+- **Note**: `package-lock.json` is untracked. Not required by acceptance but
+  typical for reproducible installs. Can be committed separately if desired.
+- **No blockers**.
