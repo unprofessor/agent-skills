@@ -4,10 +4,10 @@ aliases: [port-board]
 kind: task
 parent: port-scripts
 title: Port board.sh to TS (board.ts + cli/board.ts)
-status: review
+status: done
 assignee: null
 created: 2026-07-30
-updated: 2026-08-01T07:39:00Z
+updated: 2026-08-01
 tags: [port, board]
 depends_on: [port-lint]
 ---
