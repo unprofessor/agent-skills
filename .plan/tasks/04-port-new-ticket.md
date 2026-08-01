@@ -183,3 +183,52 @@ verdict: changes-requested
   stale-mutex-file wedge risk noted by the reviewer (flock auto-releases
   on process death). Re-verified 30/30 unique prefixes under mixed
   bash+TS concurrency.
+
+## Review
+
+verdict: approved
+
+### What I checked
+
+- **src/new-ticket.ts** — the O_EXCL `.mutex` retry lock is gone (only a
+  comment explaining why it was removed remains, line 141). The
+  allocate-prefix + write + verify critical section now runs in a spawned
+  `flock -x <git-common-dir>/planr.lock node -e …` child
+  (`LOCKED_WRITE_SCRIPT` + `lockedAllocateAndWrite`, lines 89–204): the
+  SAME lock file and mechanism bash `_lock.sh` uses (`exec 9>"$lf";
+  flock -x 9` on `<git-common-dir>/planr.lock`), so TS and bash writers
+  (new-ticket.sh, merge-task.sh) serialize against each other. Child exit
+  2 (already exists) / 3 (prefix collision) surface as the exact
+  bash-style message with exit 1; ENOENT on flock gives the clean
+  util-linux hint; other child failures give a generic `flock/child
+  failed` message. Lock auto-releases on process death — no stale-mutex
+  wedge.
+- **Concurrency reproduced (mixed bash + TS)** — throwaway git repo
+  (`git init`, `.plan/{epics,stories,tasks}`): 30 parallel invocations
+  (15 `~/.agents/skills/planr/scripts/new-ticket.sh` + 15 of this
+  worktree's `./scripts/new-ticket.sh`) → 30/30 exit 0, 30 files, 30
+  UNIQUE prefixes 01–30, zero duplicate prefixes, zero non-empty stderr.
+  Second mixed round (5 bash + 5 TS) → prefixes keep advancing
+  (tasks 01–05). Both writers locked the same `.git/planr.lock`
+  (confirmed in the throwaway repo). This is the exact scenario the
+  previous review's blocker failed (27 unique / 3 bash deaths).
+- **npm test** — 87/87 passing (22 parse + 18 lint + 9 board + 3 review +
+  35 new-ticket). **npm run build** — dist/cli/new-ticket.cjs (14.7 KB).
+- **run-tests.sh** — 49 passed, 0 failed, including the 3-way parallel
+  prefix-allocation assertion.
+- **Slug/parent validation e2e (TS shim)** — uppercase, trailing-hyphen,
+  double-hyphen slugs, missing parent, dangling parent, unknown kind all
+  rejected exit 1 with messages identical to bash; happy path writes
+  correct frontmatter (id/aliases/kind/parent/title/…); duplicate slug
+  via a new prefix behaves like bash (file created, informational lint
+  flags it on stderr, exit 0).
+- **Auto-formatting commit** (9f91899) is whitespace-only in
+  src/new-ticket.ts — no semantic change.
+
+### Residual risk
+
+- `gitCommonDir()` has no non-git fallback (bash `_lock.sh` falls back to
+  `$PLANR_DIR/.lock` outside a repo), but planr always runs inside a git
+  repo; acceptable.
+- Duplicate-slug-with-different-prefix is not guarded at write time (same
+  as bash) — the informational lint catches it; noted, not a blocker.
