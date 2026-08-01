@@ -107,3 +107,54 @@ behavior matches parseTicket and is covered by the block-style test.
 - 2026-08-01 implemented. Shared flock via spawned `flock -s` child (matches
   bash `planr_lock_shared`); explicit pipe stdio required to avoid
   execFileSync's default stderr leak duplicating error output.
+
+## Review
+
+verdict: approved
+reviewer: The Clanker
+date: 2026-08-01
+
+Independent re-verification of all acceptance items in a throwaway repo
+(`git init` + `.plan/{epics,stories,tasks}`, real worktrees):
+
+1. **src/claim.ts** — `claimTask(input: ClaimInput): string` locates the task
+   file on trunk via `ls-tree` + slug match, enforces the depends_on gate
+   across epics/stories/tasks, `git worktree add -b plan/<slug>`, flips
+   `status: in_progress` + `updated:` (frontmatter-scoped, insert-if-absent),
+   commits `plan: claim <slug> (in_progress)`, prints the worktree path.
+2. **Lock interop with bash** — lock file is `<git-common-dir>/planr.lock`
+   (relative `git-common-dir` resolved absolute against cwd), shared `flock -s`,
+   same file/mode as bash `planr_lock_shared`. Empirically: a TS claim blocked
+   ~2.6s behind a bash process holding an exclusive `flock -x` on the same
+   file, then completed; two concurrent TS claims (shared locks) both
+   proceeded without serializing. Same-file byte comparison verified.
+3. **Refusal path** — `refuse claim: '<slug>' has unfinished depends_on:
+   dep1(todo) dep2(todo)` + second line, exit 1 — byte-identical to bash
+   `claim.sh` run side-by-side (multi-blocker case diffed clean); no worktree
+   or branch left behind; trunk working tree clean.
+4. **Success path** — stdout exactly `../wt-wire-cli`, exit 0; branch
+   `plan/wire-cli` + worktree created; flip committed; a body line
+   `status: this-is-a-body-line...` untouched (frontmatter scoping); trunk
+   task file unchanged; `git status --porcelain` empty afterwards.
+5. **Insert-if-absent** — task with no `status:` in frontmatter got
+   `status: in_progress` inserted at top of the fm block; committed.
+6. **Duplicate claim** — `fatal: a branch named 'plan/wire-cli' already
+   exists`, exit 1, no node stack dump.
+7. **Tests/build** — `npm test` 94/94 pass (7 claim tests: 4 library + 3 CLI
+   in throwaway git repos); `npm run build` ok; `npx tsc --noEmit` clean;
+   `scripts/claim.sh` shim chain end-to-end.
+
+Notes (non-blocking):
+
+- `findTask` in the flocked child uses `endsWith(slug + ".md")` without
+  requiring the `NN-` numeric prefix bash enforces (`[0-9]+-<slug>\.md$`); the
+  `replace(/^\d+-/, "")` is dead code since paths start with `.plan/`. More
+  lenient than bash — a file named `zz-<slug>.md` would match. Deterministic
+  ls-tree order makes this low risk, but exact parity would be
+  `/\/\d+-<slug>\.md$/`.
+- Invoking the claim CLI from a shell that already holds planr.lock
+  self-deadlocks (child inherits the lock fd) — the documented `_lock.sh`
+  hazard (`exec 9>&-` before child scripts); parity with bash, not a
+  regression.
+- If the flip/commit fails after `worktree add` succeeds (e.g. malformed
+  frontmatter), the worktree/branch remain — same as bash; no rollback.
