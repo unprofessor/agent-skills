@@ -82,6 +82,20 @@ All checks performed in worktree at `/home/exfed/projects/wt-cleanup-and-docs`:
    notes TS implementation + self-contained bundled dist, "Extracting this
    skill" documents the dev-time build step.
 
+## Review
+
+verdict: approved
+
+- 2026-08-01 The Clanker: independently re-ran all acceptance checks in the
+  worktree — npm test 105/105, npm run build OK (yaml bundled, no
+  `require('yaml')` in dist), run-tests.sh 49/49 (block-style test asserts
+  lint-clean), grep-clean (no fm_field/fm_list/awk/perl in skills/planr/),
+  docs edits match acceptance (TICKET-FORMAT/PROCESS/SKILL), and a fresh
+  throwaway no-node_modules smoke test (board exit 0, lint exit 1 with the
+  same 1 error + 19 warnings as the in-repo run. `_lock.sh` and
+  `git-stub.ts` are gone; CLI test paths point at `skills/planr/dist/cli/`.
+  Approved.
+
 ## Notes
 
 - 2026-08-01 completed. Per leader decision (confirmed with developer):
