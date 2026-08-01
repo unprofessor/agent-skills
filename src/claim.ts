@@ -223,11 +223,11 @@ process.stdout.write(wt + "\\n");
  * merge-task.sh) and readers serialize on a consistent snapshot.
  */
 export function claimTask(input: ClaimInput): string {
-const slug = input.slug;
-const trunk = input.trunk ?? "main";
-const planDir = input.planDir ?? ".plan";
-const wt = input.worktree ?? `../wt-${slug}`;
-const cwd = input.cwd ?? process.cwd();
+	const slug = input.slug;
+	const trunk = input.trunk ?? "main";
+	const planDir = input.planDir ?? ".plan";
+	const wt = input.worktree ?? `../wt-${slug}`;
+	const cwd = input.cwd ?? process.cwd();
 
 	const lp = lockPath(cwd);
 	mkdirSync(dirname(lp), { recursive: true });

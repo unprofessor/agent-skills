@@ -104,7 +104,12 @@ describe("claimTask (library)", () => {
 		scaffoldBacklog(tmp);
 		try {
 			expect(() =>
-				claimTask({ slug: "wire-cli", trunk: "main", planDir: ".plan", cwd: tmp }),
+				claimTask({
+					slug: "wire-cli",
+					trunk: "main",
+					planDir: ".plan",
+					cwd: tmp,
+				}),
 			).toThrow(
 				"refuse claim: 'wire-cli' has unfinished depends_on: http-proxy(todo)",
 			);
@@ -186,7 +191,12 @@ describe("claimTask (library)", () => {
 
 		try {
 			expect(() =>
-				claimTask({ slug: "wire-cli", trunk: "main", planDir: ".plan", cwd: tmp }),
+				claimTask({
+					slug: "wire-cli",
+					trunk: "main",
+					planDir: ".plan",
+					cwd: tmp,
+				}),
 			).toThrow(
 				"refuse claim: 'wire-cli' has unfinished depends_on: http-proxy(todo)",
 			);
