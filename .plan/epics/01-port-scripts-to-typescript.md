@@ -3,10 +3,10 @@ id: port-scripts-to-typescript
 aliases: [port-scripts-to-typescript]
 kind: epic
 title: Port plan skill scripts from bash/awk to TypeScript
-status: todo
+status: done
 assignee: null
 created: 2026-07-30
-updated: 2026-07-30
+updated: 2026-08-01
 tags: [port, typescript, parser]
 ---
 
