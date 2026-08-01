@@ -100,6 +100,34 @@ Deviations from acceptance as written:
 - `git-stub.ts` is kept as a barrel re-export (not referenced by any shim).
   Harmless; will be replaced when real CLI entries land in [[port-scripts]].
 
+## Review
+
+- Correct: All 6 CLI stubs (`src/cli/board.ts` 16L, `claim.ts` 15L,
+  `lint.ts` 15L, `new-ticket.ts` 15L, `review.ts` 15L, `merge-task.ts`
+  15L) are <40 lines, parse argv + PLANR_TRUNK/PLANR_DIR env vars,
+  import from `../ticket.js` or `../git.js`, and have `#!/usr/bin/env
+  node` shebangs for native TS runtimes.
+- Correct: All 6 shim scripts (`scripts/*.sh`) are real files (not
+  symlinks — `readlink -f` all resolve to the project directory, not
+  `~/.agents/skills/planr/scripts/`). All `chmod +x`, all use
+  `#!/usr/bin/env bash` + `exec node ...dist/cli/<name>.cjs "$@"`.
+- Correct: `npm run build` exits 0 in ~6ms, produces 6 bundled
+  `dist/cli/<name>.cjs` (304–316 bytes each) plus `git-stub.cjs` (3.7
+  KB). `yaml` is external. No `node_modules` needed at runtime —
+  verified by `require()` from `/tmp`.
+- Correct: All 6 shims smoke-test cleanly with argv forwarding and env
+  var resolution (PLANR_TRUNK=develop works). All exit 0.
+- Correct: `~/.agents/skills/planr/scripts/` untouched — original bash
+  scripts (2–7 KB each, Jul 30 timestamps) preserved.
+- Correct: `npm test` — 22/22 parse tests still pass, no regression.
+- Note: esbuild tree-shakes unused imports in stubs (e.g. `board.cjs`
+  doesn't bundle `parseTicket` because the stub never calls it). This is
+  harmless — real usage will come in [[port-scripts]].
+- Note: `git-stub.ts` and `git-stub.cjs` are barrel re-exports not
+  wired to any shim. Harmless; will be replaced or removed later.
+
+verdict: approved
+
 ## Notes
 
 - 2026-08-01 created. Depends on [[parse-core]] and [[git-wrappers]]
