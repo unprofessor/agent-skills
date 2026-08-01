@@ -116,10 +116,7 @@ function setupReviewTask(tmp: string): string {
 	const taskPath = join(wtAbs, ".plan", "tasks", "02-wire-cli.md");
 	const taskBlob = readFileSync(taskPath, "utf-8")
 		.replace(/^status: in_progress/m, "status: review")
-		.replace(
-			/^updated: .*$/m,
-			"updated: 2026-08-01",
-		);
+		.replace(/^updated: .*$/m, "updated: 2026-08-01");
 	writeFileSync(
 		taskPath,
 		`${taskBlob}\n## Review\n\nverdict: approved\nreviewer: test\n`,
@@ -191,7 +188,12 @@ describe("mergeTask (library)", () => {
 			git(["commit", "-m", "back to in_progress"], { cwd: wtAbs });
 
 			expect(() =>
-				mergeTask({ slug: "wire-cli", trunk: "main", planDir: ".plan", cwd: tmp }),
+				mergeTask({
+					slug: "wire-cli",
+					trunk: "main",
+					planDir: ".plan",
+					cwd: tmp,
+				}),
 			).toThrow(
 				"refuse merge: task 'wire-cli' status is 'in_progress', must be 'review'.",
 			);
@@ -216,7 +218,12 @@ describe("mergeTask (library)", () => {
 			git(["commit", "-m", "changes requested"], { cwd: wtAbs });
 
 			expect(() =>
-				mergeTask({ slug: "wire-cli", trunk: "main", planDir: ".plan", cwd: tmp }),
+				mergeTask({
+					slug: "wire-cli",
+					trunk: "main",
+					planDir: ".plan",
+					cwd: tmp,
+				}),
 			).toThrow(
 				"refuse merge: no approved review verdict on 'wire-cli' (found: 'changes-requested').",
 			);
@@ -241,7 +248,12 @@ describe("mergeTask (library)", () => {
 			git(["commit", "-m", "drop review"], { cwd: wtAbs });
 
 			expect(() =>
-				mergeTask({ slug: "wire-cli", trunk: "main", planDir: ".plan", cwd: tmp }),
+				mergeTask({
+					slug: "wire-cli",
+					trunk: "main",
+					planDir: ".plan",
+					cwd: tmp,
+				}),
 			).toThrow(
 				"refuse merge: no approved review verdict on 'wire-cli' (found: 'none').",
 			);
@@ -339,7 +351,12 @@ describe("mergeTask (library)", () => {
 
 			let err: unknown;
 			try {
-				mergeTask({ slug: "wire-cli", trunk: "main", planDir: ".plan", cwd: tmp });
+				mergeTask({
+					slug: "wire-cli",
+					trunk: "main",
+					planDir: ".plan",
+					cwd: tmp,
+				});
 			} catch (e) {
 				err = e;
 			}

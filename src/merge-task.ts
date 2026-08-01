@@ -56,7 +56,9 @@ function listMd(ref: string, dir: string, cwd: string): string[] {
 
 /** Match a task file by its slug: 'NN-<slug>.md' (bash grep -E "/[0-9]+-<slug>\\.md$"). */
 function findTask(files: string[], slug: string): string | undefined {
-	const re = new RegExp(`/[0-9]+-${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.md$`);
+	const re = new RegExp(
+		`/[0-9]+-${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.md$`,
+	);
 	return files.find((f) => re.test(f));
 }
 
