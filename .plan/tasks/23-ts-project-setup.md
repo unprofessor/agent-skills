@@ -4,7 +4,7 @@ aliases: [ts-project-setup]
 kind: task
 parent: parser-foundation
 title: Set up TS project scaffolding (package.json, tsconfig, esbuild)
-status: todo
+status: in_progress
 assignee: null
 created: 2026-08-01
 updated: 2026-08-01
