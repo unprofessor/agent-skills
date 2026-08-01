@@ -92,3 +92,37 @@ All checks performed in worktree at `/home/exfed/projects/wt-git-wrappers`:
   parallel with [[parse-core]] since they touch different files.
 - `--out-extension:.js=.cjs` is now part of the build; the cli-shims
   task must point `.sh` shims at `.cjs` instead of `.js`.
+
+## Review
+
+- **Criterion 1 — 12 exports**: All 12 functions exported from
+  `src/git.ts` (lines 24–126): `lsTreeMd`, `showRef`, `worktreeAdd`,
+  `worktreeRemove`, `branchDelete`, `mergeNoFf`, `checkout`, `commit`,
+  `diffRefs`, `branchList`, `worktreeList`, `revParseVerify`. Re-exported
+  via `src/cli/git-stub.ts` (lines 3–14). Present in bundled CJS output
+  `dist/cli/git-stub.cjs` (line 23: `0 && (module.exports = { … })` lists
+  all 12 names).
+- **Criterion 2 — throw on non-zero exit**: All functions delegate to the
+  private `git()` helper (`src/git.ts:5–10`) which calls `execFileSync`
+  with no `stdio` override. `execFileSync` throws by default on non-zero
+  exit and attaches `.stderr` to the thrown `Error`. No try/catch
+  suppression anywhere in the helper. The only caught error is in the
+  internal `branchExists()` (`src/git.ts:129–136`), which uses the
+  exception for a boolean check — correct and not exported.
+- **Criterion 3 — single import**: `src/git.ts:1` imports **only**
+  `{ execFileSync }` from `"node:child_process"`. No other imports
+  anywhere in the file.
+- **Criterion 4 — npm run build**: `esbuild src/cli/*.ts --bundle
+  --platform=node --format=cjs --outdir=dist/cli
+  --out-extension:.js=.cjs --external:yaml` produces `dist/cli/git-stub.cjs`
+  (3.7 KB) and `dist/cli/placeholder.cjs` (780 B) with exit code 0.
+- **Deviations verified acceptable**:
+  - `--out-extension:.js=.cjs` in `package.json` scripts: necessary
+    because `"type": "module"` would interpret `.js` as ESM, breaking
+    `module.exports`. Correctly documented.
+  - `src/cli/git-stub.ts`: barrel re-export needed so esbuild glob
+    `src/cli/*.ts` picks up `src/git.ts`. Will be replaced by real CLI
+    entries per [[cli-shims]]. Non-breaking placeholder.
+- **No blockers.**
+
+verdict: approved
