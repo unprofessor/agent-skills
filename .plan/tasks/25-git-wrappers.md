@@ -4,7 +4,7 @@ aliases: [git-wrappers]
 kind: task
 parent: cli-scaffolding
 title: Implement typed git wrappers (src/git.ts)
-status: todo
+status: in_progress
 assignee: null
 created: 2026-08-01
 updated: 2026-08-01
