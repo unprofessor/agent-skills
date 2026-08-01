@@ -42,7 +42,7 @@ depends_on: []                    # slugs of any tickets that must be done first
 ### Fields
 
 | Field | Required | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `id` | yes | The slug; matches filename without `.md`. |
 | `aliases` | no | `[<slug>]`, so Obsidian resolves `[[slug]]` links despite the `NN-` filename prefix. Never read by scripts. |
 | `kind` | yes | `epic`, `story`, or `task`. |
@@ -53,7 +53,7 @@ depends_on: []                    # slugs of any tickets that must be done first
 | `created` | yes | `YYYY-MM-DD`. |
 | `updated` | yes | `YYYY-MM-DD`; bump on any edit. |
 | `tags` | no | Free-form list. |
-| `depends_on` | no | List of ticket slugs — **any** ticket, not just siblings — that must be `done` before this ticket is dispatchable. Enforced by `claim.sh`; shown as `BLOCKED-BY` on the board; `lint.sh` errors on dangling slugs, cycles, and non-inline lists (always write the inline `[a, b]` form — block-style YAML is not parsed). Prefer this over the `blocked` status for ordering within the plan. |
+| `depends_on` | no | List of ticket slugs — **any** ticket, not just siblings — that must be `done` before this ticket is dispatchable. Enforced by `claim.sh`; shown as `BLOCKED-BY` on the board; `lint.sh` errors on dangling slugs and cycles. Any valid YAML list form works (inline `[a, b]` or block-style `\n  - a`). Prefer this over the `blocked` status for ordering within the plan. |
 
 ### Status lifecycle
 
@@ -96,13 +96,17 @@ needs to orient.
 ## Acceptance
 - [ ] concrete, checkable criteria
 ```
+
 The worker adds, when self-validating:
+
 ```markdown
 ## Validation
 - 2025-07-29 <who>: ran `cargo test --release firewall` -> 4 passed
 - 2025-07-29 <who>: manually ran `examples/pi-bootstrap` against Gemini -> ok
 ```
+
 The reviewer adds, after independently re-checking:
+
 ```markdown
 ## Review
 verdict: approved          # or: changes-requested
@@ -142,13 +146,17 @@ read-only UI over the working tree).
 
 `merge-task.sh` parses the `## Review` section for a `verdict:` line. Use
 exactly:
+
 ```markdown
 verdict: approved
 ```
+
 or
+
 ```markdown
 verdict: changes-requested
 ```
+
 If a second review round occurs, append a new `## Review` block dated beneath
 the first (do not delete history); `merge-task.sh` reads the *last* `## Review`
 block's verdict.

@@ -112,12 +112,17 @@ check "lint errors on dangling depends_on" 1 $?
 contains "  ...names the ghost" "depends_on 'ghost-task' does not exist" "$out"
 sed -i 's/^depends_on: \[ghost-task\]/depends_on: [http-proxy]/' .plan/tasks/02-wire-cli.md
 
-# Block-style depends_on parses as empty in lint.sh AND claim.sh — the dep
-# would silently stop gating, so lint must error even though the dep exists.
+# Block-style depends_on is parsed correctly by the TS port (eemeli/yaml) —
+# the old bash parsers read it as empty (silently disabling gating); the TS
+# parser treats it as the same array as inline, so lint must NOT error.
 sed -i 's/^depends_on: \[http-proxy\]/depends_on:\n  - http-proxy/' .plan/tasks/02-wire-cli.md
 "$skill/scripts/lint.sh" >"$out" 2>&1
-check "lint errors on block-style depends_on" 1 $?
-contains "  ...saying gating would be disabled" "silently disable gating" "$out"
+check "block-style depends_on lints clean" 0 $?
+if grep -qF "depends_on" "$out"; then
+  fail=$((fail+1)); echo "FAIL: block-style depends_on triggered a lint finding"; cat "$out"
+else
+  pass=$((pass+1)); echo "PASS: block-style depends_on parses (no lint error)"
+fi
 sed -i -e '/^  - http-proxy$/d' -e 's/^depends_on:$/depends_on: [http-proxy]/' .plan/tasks/02-wire-cli.md
 
 sed -i 's/^depends_on: \[\]/depends_on: [wire-cli]/' .plan/tasks/01-http-proxy.md

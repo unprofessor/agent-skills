@@ -52,7 +52,7 @@ shows up as "ready for review" immediately, without waiting for merge.
 
 1. **Worker completes** implementation and self-validates every `## Acceptance`
    criterion, recording what was checked in a `## Validation` section (commands
-   + results). Sets `status: review`. Commits on the task branch.
+   - results). Sets `status: review`. Commits on the task branch.
 2. **Reviewer (fresh context)** reads the task, the diff, and `## Validation`,
    then **runs the acceptance checks itself** in the worktree. It edits only
    the task file:
@@ -71,9 +71,11 @@ honor system.
 ## Dependencies (one graph, any ticket to any ticket)
 
 A ticket declares what must be `done` before it, via frontmatter:
+
 ```yaml
 depends_on: [http-connect-proxy, wire-firewall-into-cli]
 ```
+
 These are slugs of **any** tickets in the backlog — most often siblings under
 the same story, but cross-story and cross-epic edges are equally valid (the
 scripts resolve a dep slug across `epics/`, `stories/`, and `tasks/`).
@@ -89,10 +91,8 @@ Together they form one dependency graph over the whole backlog. Enforcement:
   what's waiting.
 - **`lint.sh`** keeps the graph sound: a `depends_on` slug that doesn't exist
   (a gate nothing can satisfy), a dangling `parent` (an orphan that roll-up
-  would silently miss), a duplicate slug, a `depends_on` **cycle** (nothing
-  in the cycle can ever become ready), or a `depends_on` written as a
-  block-style YAML list (the scripts parse only the inline `[a, b]` form —
-  block-style deps would silently stop gating) are all errors. Run it after
+  would silently miss), a duplicate slug, or a `depends_on` **cycle** (nothing
+  in the cycle can ever become ready) are all errors. Run it after
   any frontmatter edit; `new-ticket.sh` and `claim.sh` also run it
   informationally.
 - `blocked` (the status) is still available for *ad-hoc* blockers a dependency
