@@ -4,10 +4,10 @@ aliases: [cli-shims]
 kind: task
 parent: cli-scaffolding
 title: CLI entry stubs, .sh shims, build config, and smoke test
-status: review
+status: done
 assignee: null
 created: 2026-08-01
-updated: 2026-08-01T07:22:00Z
+updated: 2026-08-01T07:30:00Z
 tags: [cli, shims, build, distribution]
 depends_on: [parse-core, git-wrappers]
 ---
