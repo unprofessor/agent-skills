@@ -13,6 +13,20 @@ metadata:
 
 # Tend a PR (review-comment polling)
 
+## Canonical source
+
+This skill is published to the `unprofessor/agent-skills` tap (repo:
+`skills/tend-pr/`). The repo copy is authoritative.
+
+- **Edit the repo copy** — worktree → commit → PR → merge (see the
+  `skill-promotion` skill), then `hermes skills update` to refresh installed
+  copies.
+- **Do NOT edit installed copies in place as the primary workflow** — they
+  are snapshots. If you edit locally, sync back to the repo immediately
+  (sync-back mode in `skill-promotion`), or the changes live only in one
+  install.
+- The tap may host other skills; keep changes scoped to this skill's dir.
+
 Sweep an open PR for new reviewer comments and drive each to resolution - but on
 PRs in OTHER people's/orgs' repos (e.g. NousResearch upstream), ONLY draft
 replies and patches; never auto-post or auto-push without the author's sign-off.
@@ -42,20 +56,29 @@ Why a separate script + cron (not ad-hoc gh calls):
 
 ## Bundled script
 
-`scripts/pr_watch.py` - drop-in poller. Set REPO/PR at the top. It prints to
-It prints to stdout a machine/agent-friendly record:
+`scripts/pr_watch.py` — drop-in poller. Set REPO/PR at the top. It's
+**deployment-level silent**: it emits output only on state change (a
+fingerprint of `(head_sha, pr_state, ci_state, ci_runs, comments)`), so
+identical ticks produce NOTHING instead of spam. On close/merge it always
+emits to trigger self-cleanup. On change it prints `STATE_DELTA=yes` plus the
+current PR/CI state and any new comments; on a fresh UTC day with no change
+it emits exactly one `HEARTBEAT_DUE` line for an anti-spam liveness ping.
 
 ```
-PR_STATE=open head_sha=...     # or closed / merged
-CI=pass                        # pass | fail | pending | unknown
-CI_RUN=Validate:completed:success   # one per run: NAME:STATUS:CONCLUSION
-CI_FAILED_JOB=validate-shell:42     # only when a job failed (real job id)
-NO_NEW_COMMENTS                 # or NEW_COMMENTS=N + ---COMMENT--- records
+PR_STATE=open head_sha=...              # or closed / merged (always emitted)
+CI=pass|fail|pending|unknown             # overall
+CI_RUN=NAME:STATUS:CONCLUSION:RUN_ID    # one per run, sorted
+CI_FAILED_JOB=NAME:JOB_ID               # only when a job failed
+STATE_DELTA=yes|no prior_fingerprint=... # ALWAYS present when emitted; silent otherwise
+NEW_COMMENTS=N (+ ---COMMENT--- records) # only on delta
+HEARTBEAT_DUE                            # only when no change AND first tick of UTC day
 ```
 
-Dedupe state is kept in a state file (default `/workspace/pr-watch-<pr>.state`);
-writes are best-effort. On `PR_STATE=closed|merged` it prints only the state line
-so the cron agent knows to tear down.
+Dedupe + fingerprint persist in `<state>.state` (new schema: `{"comments":
+[...], "fingerprint": "..."}`, migrated transparently from the prior plain
+list). Daily heartbeat is recorded in a separate `<state>.state.idle` sidecar.
+On `PR_STATE=closed|merged` the script ALWAYS prints the state line so the cron
+agent knows to tear down, regardless of dedupe.
 
 ## Setting up the watcher
 
@@ -69,21 +92,27 @@ so the cron agent knows to tear down.
    ```
 2. **Create the cron job** (via the `cronjob` tool), enabled_toolsets:
    `["terminal","file","cronjob"]`, schedule e.g. `every 15m`. The prompt should
-   be fully self-contained (fresh session each run) and encode the policy:
-   - Run `python3 ~/.hermes/scripts/pr_watch_<PR>.py`; read stdout.
-   - NO_NEW_COMMENTS -> QUIET by default. Send at most ONE short "still
-     watching / no new comments" heartbeat per calendar day (UTC) - track the
-     last-idle date in a small file (e.g. `<state_file>.idle`) and skip that
-     tick if already sent today. Purpose: prove the watcher is alive without
-     spamming the thread every 15 min.
-   - PR_STATE=closed|merged -> post a short notice to the thread, then remove
-     THIS job via `cronjob` list+remove (match by name). Do NOT schedule another.
-   - NEW_COMMENTS -> for each, draft a reply + (if warranted) a concrete patch +
-     proposed commit message. **Draft-only on org repos: no posting, no push.**
-   - CI=fail -> investigate the CI_FAILED_JOB lines, draft a fix (diff +
-     commit message) for the author's sign-off, surface the failure in the
-     thread; do not auto-push. CI=pending -> wait, never claim green.
-     CI=unknown -> note the poller could not read CI. CI=pass -> nothing extra.
+   be fully self-contained (fresh session each run) and encode the policy.
+   **The script is the source of truth for WHAT to emit.** Idempotent ticks
+   produce ZERO stdout, so the cron agent sees nothing and outputs nothing —
+   anti-spam is enforced at the script layer, not by a model judgment. The
+   agent's job is purely to DRAFT (and on author approval, post/push):
+   - The script producing **no output at all** -> the cron agent must output
+     nothing (do not invent a status). This is the steady-state norm a healthy
+     PR spends ~99% of its time in.
+   - Script prints `STATE_DELTA=yes` -> something changed. Read the lines and
+     act (draft replies for NEW_COMMENTS, surface CI failures, etc.).
+   - Script prints `HEARTBEAT_DUE` ALONE (with `STATE_DELTA=no`) -> send one
+     short heartbeat message ("🛰️ still watching #<PR> — no new review
+     comments"). Fires at most once per UTC day; subsequent ticks with no
+     change are silent.
+   - Script prints `PR_STATE=closed|merged` -> post a short notice, then
+     remove this cron job (match by name in `cronjob action=list`).
+   - Script prints `CI=fail` -> look for any `CI_FAILED_JOB=name:id` lines and
+     draft a fix (diff + commit message) for the author's sign-off; surface
+     the failure in the thread. Do not auto-push. CI=pending -> stay quiet.
+     CI=unknown with runs printed -> note "could not read CI"; do not assume
+     green.
 
 ## Tending policy
 
@@ -190,3 +219,8 @@ Re-runs are safe; already-seen comments are suppressed.
   own fork, but CANNOT create a PR or post comments against the upstream org.
   If the broker can't post, hand the author a ready-to-run `gh api -X POST ...`
   command for each approved reply.
+- **Always re-edit REPO/PR after copying the script.** The bundled template
+  uses `owner/repo` and `12345`; the smoke test in `step 1` prints
+  `PR_STATE=open|closed|merged` on success and `PR_STATE=unknown head_sha=`
+  on miss. Don't deploy on the miss and just patch the cron prompt later;
+  the script is what's broken.
