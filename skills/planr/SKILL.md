@@ -5,6 +5,20 @@ description: "Use this skill when the developer says 'we need to plan this', 'sp
 
 # Planr — trunk-based backlog for multi-agent work
 
+## Canonical source
+
+This skill is published to the `unprofessor/agent-skills` tap (repo:
+[`skills/planr`](https://github.com/unprofessor/agent-skills/tree/main/skills%2Fplanr)).
+The repo copy is authoritative.
+
+- **Iterate locally, converge in the repo.** Editing the installed copy is
+  fine for rapid iteration (the harness loads it), but the repo copy is
+  authoritative: sync back when the change stabilizes, then refresh installed
+  copies. Never leave the two divergent at session end.
+- **Policy/behavior changes go through the repo PR flow** — that's the review
+  gate. Mechanics (scripts, wording) may iterate locally first.
+- The tap may host other skills; keep changes scoped to this skill's dir.
+
 This skill coordinates planning, execution, and review across three agent
 roles. It is project-agnostic: the only project-specific data is a
 git-tracked `.plan/` directory it creates in the repo root.
