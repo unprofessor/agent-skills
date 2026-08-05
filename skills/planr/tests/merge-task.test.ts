@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { mergeTask } from "../src/merge-task.js";
 import { claimTask } from "../src/claim.js";
 
-const CLI = join(__dirname, "..", "skills", "planr", "dist", "cli", "merge-task.cjs");
+const CLI = join(__dirname, "..", "dist", "cli", "merge-task.cjs");
 
 function git(args: string[], opts: { cwd?: string } = {}): string {
 	return execFileSync("git", args, {

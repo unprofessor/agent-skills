@@ -245,8 +245,10 @@ All scripts honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 `dist/cli/*.cjs`; the `.sh` files are thin shims (`exec node
 "$(dirname "$0")/../dist/cli/<name>.cjs" "$@"`) so invocation is unchanged.
 The bundle includes the YAML parser — no `node_modules` is needed at
-runtime. `npm run build` (dev-time) regenerates `dist/`; the shipped skill
-folder carries its own `dist/` so the copy stays self-contained.
+runtime. The dev project (TypeScript source, vitest tests, `package.json`,
+`tsconfig.json`) lives in this same folder; `npm run build` (dev-time)
+regenerates `dist/`, and the shipped skill folder carries its own `dist/` so
+the copy stays self-contained.
 
 `tests/run-tests.sh` exercises the scripts end-to-end in a throwaway git repo
 (creation guards, cross-story dependency gating, every lint class); run it
@@ -416,8 +418,11 @@ project, copy `.agents/skills/planr/` into that repo's `.agents/skills/` (or
 only project-specific data.
 
 **Build step (dev-time only):** the skill ships as compiled JS. In the
-source repo, run `npm install && npm run build` to regenerate `dist/cli/*.cjs`
-(esbuild bundles the TypeScript + YAML parser into each CLI). The skill folder
-includes its built `dist/`, so the copy at the target is fully self-contained
-— no `npm install` or build is needed there. If you are copying from a
-fresh clone, build first, then copy the folder *including* its `dist/`.
+source repo (the `agent-skills` tap), `cd skills/planr` then run
+`npm install && npm run build` to regenerate `dist/cli/*.cjs` (esbuild
+bundles the TypeScript + YAML parser into each CLI). The skill folder
+includes its built `dist/`, so the copy at the target is fully
+self-contained — no `npm install` or build is needed there. If you are
+copying from a fresh clone, build first, then copy the folder *including*
+its `dist/` (the `src/`, `tests/`, `package.json`, and `tsconfig.json` are
+dev-only and can be stripped from a copy).
