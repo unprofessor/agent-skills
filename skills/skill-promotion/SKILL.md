@@ -133,6 +133,12 @@ promoted skill at session end**, or the divergence is explicitly declared.
 
 ## Workflow (promote: new skill)
 
+Git contribution policy (commit style, identity, merge-vs-rebase) is a
+property of the **target repo**, not of this skill — resolve it from the
+repo's CONTRIBUTING.md / AGENTS.md / recent history before committing. The
+default here is worktree + PR + merge because it is the safe default, not
+because it is universal.
+
 1. **Gate check** — the skill must be generalizable (no environment-specific
    paths, hostnames, or personal creds), and frontmatter must have `name`,
    `description`, `version`, `author`, `license`, and a tags block.
@@ -153,10 +159,10 @@ promoted skill at session end**, or the divergence is explicitly declared.
    dot/underscore-prefixed skill dirs. Completion: all three pass.
 6. **Add the Canonical-source marker** if the skill lacks it (see above).
    Completion: marker present in the repo copy.
-7. **Commit + push** — merge commits only, never rebase/squash. Follow the
-   repo owner's commit-identity convention (author + co-author trailer if
-   that's the established pattern). Push branch, open PR to main (own repo:
-   normal PR flow is fine).
+7. **Commit + push** — follow the target repo's contribution policy for
+   commit style and identity (author + co-author trailer only if that's the
+   repo's established convention). Push branch, open PR to main; merge via
+   whatever the repo's policy prescribes (merge commit, squash, or rebase).
 8. **Verify** — install from the tap per your agent reference into a scratch
    profile, confirm the scan passes and the skill loads in a FRESH session
    (skill loaders initialize at session start; the current session won't see
@@ -171,7 +177,8 @@ is stale (diff first — see When to Use). Same mechanics as promote, but:
 2. **Worktree** — `git worktree add ... -b sync/<skill>` off main.
 3. **Copy local → repo** — `cp -r <local skill dir>/<cat>/<skill>/ skills/<skill>/` (flat; overwrites repo copy with local, INCLUDING any local-only edits).
 4. **Verify the Canonical-source marker survived** — if the local copy lacks it, add it now (it's part of the repo copy's contract). Also verify local SKILL.md and scripts/ don't reference local-only paths.
-5. **Validate + commit + PR + merge** — same as promote steps 5-7.
+5. **Validate + commit + PR + merge** — same as promote steps 5-7 (merge via
+   the target repo's prescribed policy).
 6. **Reinstall repo version locally** — after merge, reinstall/update via your harness's mechanism so the local copy matches the repo again and the next agent doesn't diff-drift. Completion: local == origin/main for that skill.
 
 ## Common Pitfalls
@@ -211,8 +218,9 @@ is stale (diff first — see When to Use). Same mechanics as promote, but:
 - [ ] Canonical-source marker present in the repo copy of the skill body
 - [ ] Frontmatter: name, description (≤1024), version, author, license, tags
 - [ ] Provenance confirmed (not bundled with the harness)
-- [ ] Worktree branch based on main; merge commit used, not rebase/squash
-- [ ] Commit identity follows the repo owner's convention
+- [ ] Worktree branch based on main; merge per the repo's prescribed policy
+  (merge commit, squash, or rebase)
+- [ ] Commit identity follows the target repo's convention
 - [ ] Local copy == origin/main for the skill after sync (no residual drift)
 - [ ] Tap install succeeds in fresh profile (per your agent reference)
 - [ ] Skill loads in a fresh session (not the creating session)
