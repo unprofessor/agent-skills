@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """PR watcher for the tend-pr skill.
 
-Polls a GitHub PR's state + comments + CI status. Prints PR_STATE plus any NEW
-comments (deduped via a state file) to stdout, and always prints CI status
-(pass/fail/pending/unknown + failed job names) so the cron agent can act when
-CI is red. Self-cleanup signal: PR_STATE=closed or PR_STATE=merged.
+Polls a GitHub PR's state + comments + CI status. Emits a printer-friendly
+record to stdout that the cron agent turns into drafts. Important: the script
+itself dedupes on a stable fingerprint (head_sha + pr_state + ci state + ci
+runs + comments), so identical ticks produce NO output - the agent silence
+rule then carries the rest of the day. Only emits on delta.
 
-CI is read via the REST Actions API (`/actions/runs?head_sha=...`) rather than
-check-runs/GraphQL, because a fork-scoped or fine-grained token may NOT have
-`checks:read`, while actions read is commonly available. If the job list can't
-be read, CI=unknown is reported (never silently assumed green).
+Self-cleanup signal: PR_STATE=closed or PR_STATE=merged (always emitted).
 
-Usage: set REPO/PR (and optionally STATE_FILE) below, then run directly
+CI is read via the REST Actions API (`/actions/runs?head_sha=...`) rather
+than check-runs/GraphQL, because a fork-scoped or fine-grained token may NOT
+have `checks:read`, while actions read is commonly available. If the run
+list can't be read, CI=unknown is reported (never silently assumed green).
+
+Usage: set REPO/PR at the top (and optionally STATE_FILE), then run directly
 (python3 pr_watch.py) or from a cronjob. Re-runs are safe / idempotent.
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -38,20 +42,23 @@ def gh(*args):
 
 
 def ci_check(sha):
-    """Return (state, detail_lines). state in {pass, fail, pending, unknown}."""
+    """Return (state, detail_lines, runs_fingerprint)."""
     if not sha:
-        return "unknown", []
+        return "unknown", [], ""
     payload = gh(f"repos/{REPO}/actions/runs?head_sha={sha}&per_page=10") or {}
     runs = payload.get("workflow_runs", [])
     if not runs:
-        return "unknown", ["CI=unknown (no workflow runs found for this head)"]
+        return "unknown", ["CI=unknown (no workflow runs found for this head)"], ""
     lines = []
     overall = "pass"
+    fp_runs = []
     for r in runs[:5]:
         st = r.get("status")              # queued|in_progress|completed|...
         concl = r.get("conclusion") or ""  # success|failure|cancelled|...
         name = r.get("name", "?")
-        lines.append(f"CI_RUN={name}:{st}:{concl or ''}")
+        run_id = r.get("id")
+        lines.append(f"CI_RUN={name}:{st}:{concl or ''}:{run_id}")
+        fp_runs.append(f"{name}:{st}:{concl}:{run_id}")
         if st != "completed":
             if overall == "pass":
                 overall = "pending"
@@ -61,96 +68,129 @@ def ci_check(sha):
             for j in jobs:
                 if j.get("conclusion") in NON_GREEN:
                     lines.append(f"CI_FAILED_JOB={j.get('name', '?')}:{j.get('id')}")
-    return overall, lines
+    return overall, lines, "|".join(sorted(fp_runs))
+
+
+def compute_fingerprint(pr_state, head_sha, ci_state, runs_fp):
+    """Stable SHA1 of the things the author cares about. Any change -> ping."""
+    payload = f"{pr_state}|{head_sha}|{ci_state}|{runs_fp}"
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+
+
+def load_state():
+    """Return (set_of_seen_comment_ids, last_fingerprint_or_None).
+
+    Migrates older list-only state files transparently."""
+    seen, last_fp = set(), None
+    if not os.path.exists(STATE_FILE):
+        return seen, last_fp
+    try:
+        raw = json.load(open(STATE_FILE))
+    except Exception:
+        return seen, last_fp
+    if isinstance(raw, list):                    # legacy schema
+        seen = set(raw)
+    elif isinstance(raw, dict):
+        seen = set(raw.get("comments") or [])
+        last_fp = raw.get("fingerprint")
+    return seen, last_fp
+
+
+def save_state(seen, fingerprint):
+    """Write new schema; best-effort (do not break the run on a write error)."""
+    try:
+        with open(STATE_FILE, "w") as fh:
+            json.dump({"comments": sorted(seen), "fingerprint": fingerprint}, fh)
+    except Exception:
+        pass
 
 
 def main():
     pr = gh(f"repos/{REPO}/pulls/{PR}")
-    state = (pr or {}).get("state", "unknown")
-    head_sha_full = str(((pr or {}).get("head") or {}).get("sha", ""))
-    head_sha = head_sha_full[:12]
-    if state in ("closed", "merged"):
-        print(f"PR_STATE={state} head_sha={head_sha}")
+    pr_state = (pr or {}).get("state", "unknown")
+    head_sha_full = str(((pr or {}).get("head") or {}).get("sha", "") or "")
+    head_sha_short = head_sha_full[:12]
+    if pr_state in ("closed", "merged"):
+        # Self-cleanup signal: ALWAYS emit, even if unchanged, so the agent tears down.
+        print(f"PR_STATE={pr_state} head_sha={head_sha_short}")
         return
 
-    # ci_check needs the FULL sha: /actions/runs?head_sha= matches exactly.
-    ci, ci_lines = ci_check(head_sha_full)
-    print(f"PR_STATE={state} head_sha={head_sha}")
-    print(f"CI={ci}")
-    for line in ci_lines:
-        print(line)
+    ci_state, ci_lines, runs_fp = ci_check(head_sha_full)
+    new_fingerprint = compute_fingerprint(pr_state, head_sha_full, ci_state, runs_fp)
 
+    seen_comments, last_fingerprint = load_state()
+
+    # Pull comment lists. Don't add to `seen` until AFTER we compute the delta so
+    # a failed write doesn't accidentally dedupe fresh comments.
     issue_comments = gh(f"repos/{REPO}/issues/{PR}/comments?per_page=100") or []
     review_comments = gh(f"repos/{REPO}/pulls/{PR}/comments?per_page=100") or []
-
-    seen = set()
-    if os.path.exists(STATE_FILE):
-        try:
-            seen = set(json.load(open(STATE_FILE)))
-        except Exception:
-            seen = set()
-
-    new = []
+    all_comments = []
     for c in issue_comments:
-        cid = "issue-" + str(c["id"])
-        if cid not in seen:
-            seen.add(cid)
-            new.append({
-                "kind": "issue", "id": cid,
-                "author": c["user"]["login"], "created": c["created_at"],
-                "body": c.get("body") or "",
-            })
+        all_comments.append(("issue-" + str(c["id"]), {
+            "kind": "issue", "id": "issue-" + str(c["id"]),
+            "author": c["user"]["login"], "created": c["created_at"],
+            "body": c.get("body") or "",
+        }))
     for c in review_comments:
-        cid = "review-" + str(c["id"])
-        if cid not in seen:
-            seen.add(cid)
-            new.append({
-                "kind": "review", "id": cid,
-                "author": c["user"]["login"], "created": c["created_at"],
-                "path": c.get("path"), "line": c.get("line") or c.get("original_line"),
-                "body": c.get("body") or "",
-            })
+        all_comments.append(("review-" + str(c["id"]), {
+            "kind": "review", "id": "review-" + str(c["id"]),
+            "author": c["user"]["login"], "created": c["created_at"],
+            "path": c.get("path"), "line": c.get("line") or c.get("original_line"),
+            "body": c.get("body") or "",
+        }))
 
-    try:
-        with open(STATE_FILE, "w") as fh:
-            json.dump(sorted(seen), fh)
-    except Exception:
-        pass
+    new_comments = [info for cid, info in all_comments if cid not in seen_comments]
+    new_seen = seen_comments | {cid for cid, _ in all_comments}
 
-    if new:
-        print(f"NEW_COMMENTS={len(new)}")
-        for c in new:
-            print("---COMMENT---")
-            print(f"kind={c['kind']} id={c['id']} author={c['author']} created={c['created']}")
-            if c.get("path"):
-                print(f"path={c['path']} line={c.get('line')}")
-            print(c["body"])
-    else:
-        # Quiet unless a daily heartbeat is due (prove it's alive, don't spam).
-        idle_file = STATE_FILE + ".idle"
-        today = ""
+    state_changed = (new_fingerprint != last_fingerprint) or bool(new_comments)
+    # Save (stamp + dedupe set) regardless; the daily-heartbeat flag reads from a sidecar.
+    save_state(new_seen, new_fingerprint)
+
+    if not state_changed:
+        # Anti-spam primary path: nothing changed since last tick.
+        # Allow exactly ONE heartbeat per UTC day (writes to <state>.idle if not already today).
         try:
             import datetime
             today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
         except Exception:
-            pass
-        heartbeat_due = False
+            today = ""
         if today:
+            idle_file = STATE_FILE + ".idle"
             last_idle = ""
             try:
                 last_idle = open(idle_file).read().strip()
             except Exception:
                 pass
             if last_idle != today:
-                heartbeat_due = True
                 try:
                     with open(idle_file, "w") as fh:
                         fh.write(today)
                 except Exception:
                     pass
+                print(f"PR_STATE={pr_state} head_sha={head_sha_short}")
+                print(f"CI={ci_state}")
+                for line in ci_lines:
+                    print(line)
+                print("STATE_DELTA=no NO_NEW_COMMENTS HEARTBEAT_DUE")
+        return
+
+    # Something IS different. Emit the full record so the agent can act.
+    print(f"PR_STATE={pr_state} head_sha={head_sha_short}")
+    print(f"CI={ci_state}")
+    for line in ci_lines:
+        print(line)
+    print(f"STATE_DELTA=yes prior_fingerprint={last_fingerprint or 'none'}")
+    if new_comments:
+        print(f"NEW_COMMENTS={len(new_comments)}")
+        for info in new_comments:
+            print("---COMMENT---")
+            print(f"kind={info['kind']} id={info['id']} author={info['author']} created={info['created']}")
+            if info.get("path"):
+                print(f"path={info['path']} line={info.get('line')}")
+            print(info["body"])
+    else:
+        # State changed (probably head SHA moved or CI rolled) but no new comments.
         print("NO_NEW_COMMENTS")
-        if heartbeat_due:
-            print("HEARTBEAT_DUE")
 
 
 if __name__ == "__main__":
