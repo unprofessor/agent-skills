@@ -16,15 +16,15 @@ metadata:
 ## Canonical source
 
 This skill is published to the `unprofessor/agent-skills` tap (repo:
-`skills/tend-pr/`). The repo copy is authoritative.
+[`skills/tend-pr`](https://github.com/unprofessor/agent-skills/tree/main/skills%2Ftend-pr)).
+The repo copy is authoritative.
 
-- **Edit the repo copy** — worktree → commit → PR → merge (see the
-  `skill-promotion` skill), then `hermes skills update` to refresh installed
-  copies.
-- **Do NOT edit installed copies in place as the primary workflow** — they
-  are snapshots. If you edit locally, sync back to the repo immediately
-  (sync-back mode in `skill-promotion`), or the changes live only in one
-  install.
+- **Iterate locally, converge in the repo.** Editing the installed copy is
+  fine for rapid iteration (the harness loads it), but the repo copy is
+  authoritative: sync back when the change stabilizes, then refresh installed
+  copies. Never leave the two divergent at session end.
+- **Policy/behavior changes go through the repo PR flow** — that's the review
+  gate. Mechanics (scripts, wording) may iterate locally first.
 - The tap may host other skills; keep changes scoped to this skill's dir.
 
 Sweep an open PR for new reviewer comments and drive each to resolution - but on
