@@ -4,13 +4,13 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-const CLI = join(__dirname, "..", "skills", "planr", "dist", "cli", "review.cjs");
+const CLI = join(__dirname, "..", "dist", "cli", "review.cjs");
 
 function git(args: string[], opts: ExecFileSyncOptions = {}): string {
 	return execFileSync("git", args, {
 		encoding: "utf-8",
 		...opts,
-	});
+	}) as string;
 }
 
 describe("review CLI", () => {
