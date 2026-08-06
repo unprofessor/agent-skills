@@ -28,8 +28,8 @@ overlap between tasks, not a bookkeeping failure to paper over.)
 ## Roles
 
 - **Leader** (foreground, with the developer) — sole writer to the backlog:
-  creates tickets, sets `depends_on`, dispatches workers and reviewers, merges
-  approved branches. Does not implement or review.
+  creates tickets, sets `depends_on`, dispatches workers and reviewers, closes
+  approved tasks/stories/epics. Does not implement or review.
 - **Worker** — implements one task in a worktree; self-validates; sets
   `review`. Does not set `done`.
 - **Reviewer** — fresh-context, independent; re-runs acceptance checks; edits
@@ -41,7 +41,7 @@ overlap between tasks, not a bookkeeping failure to paper over.)
 Trunk (default `main`; `PLANR_TRUNK` to override) is the single source of truth
 for what tickets exist and their merged statuses. A worktree branch only sees
 tickets that existed when it was cut, so workers must read the board from
-trunk, not their checkout. `scripts/board.sh` does this read-only via
+trunk, not their checkout. `planr board` does this read-only via
 `git show trunk:.plan/...` for the backlog **and** scans `plan/*` branches for
 in-flight status — so a task a worker has flipped to `review` on its branch
 shows up as "ready for review" immediately, without waiting for merge.
@@ -59,12 +59,14 @@ shows up as "ready for review" immediately, without waiting for merge.
    - `verdict: approved` → leaves `status: review`, adds `## Review`, commits.
    - `verdict: changes-requested` → adds `## Review`, flips `status: in_progress`,
      commits. The leader re-dispatches the worker.
-3. **Leader merges** with `merge-task.sh`, which requires both
-   `status: review` **and** an approved `## Review` verdict, then flips the
-   task to `done` on trunk as part of the merge.
+3. **Leader closes** with `planr close task <slug>`, which requires both
+   `status: review` **and** an approved `## Review` verdict. The done flip
+   happens **on the branch** (before merge), then `git merge --no-ff` brings
+   it to trunk — so "done" is a property of the completed branch, not a
+   post-hoc observation.
 
 A worker setting `status: review` without a `## Validation` section, or a
-merge without an approved verdict, is refused by the scripts. This is the
+close without an approved verdict, is refused by planr. This is the
 guardrail against the most common agent failure mode: declaring done on the
 honor system.
 
@@ -77,23 +79,22 @@ depends_on: [http-connect-proxy, wire-firewall-into-cli]
 ```
 
 These are slugs of **any** tickets in the backlog — most often siblings under
-the same story, but cross-story and cross-epic edges are equally valid (the
-scripts resolve a dep slug across `epics/`, `stories/`, and `tasks/`).
+the same story, but cross-story and cross-epic edges are equally valid (planr
+resolves a dep slug across `epics/`, `stories/`, and `tasks/`).
 Hierarchy (`parent`) and ordering (`depends_on`) are independent relations:
 `parent` structures the backlog for roll-up; `depends_on` gates dispatch.
 Together they form one dependency graph over the whole backlog. Enforcement:
 
-- **`claim.sh`** refuses to create a worktree for a task whose `depends_on`
-  are not all `status: done` on trunk, printing the blockers. So a worker is
-  never dispatched onto a task whose prerequisites are unfinished.
-- **`board.sh`** shows a `BLOCKED-BY` column for tasks: any dep not `done` on
-  trunk is listed, so the leader can see at a glance what's ready versus
+- **`planr claim <slug>`** refuses to create a worktree for a task whose
+  `depends_on` are not all `status: done` on trunk, printing the blockers.
+- **`planr board`** shows a `BLOCKED-BY` column for tasks: any dep not `done`
+  on trunk is listed, so the leader can see at a glance what's ready versus
   what's waiting.
-- **`lint.sh`** keeps the graph sound: a `depends_on` slug that doesn't exist
-  (a gate nothing can satisfy), a dangling `parent` (an orphan that roll-up
-  would silently miss), a duplicate slug, or a `depends_on` **cycle** (nothing
-  in the cycle can ever become ready) are all errors. Run it after
-  any frontmatter edit; `new-ticket.sh` and `claim.sh` also run it
+- **`planr lint`** keeps the graph sound: a `depends_on` slug that doesn't
+  exist (a gate nothing can satisfy), a dangling `parent` (an orphan that
+  roll-up would silently miss), a duplicate slug, or a `depends_on` **cycle**
+  (nothing in the cycle can ever become ready) are all errors. Run it after
+  any frontmatter edit; `planr new` and `planr claim` also run it
   informationally.
 - `blocked` (the status) is still available for *ad-hoc* blockers a dependency
   can't express (an external decision, a bug in a dep outside this plan). Put
@@ -106,15 +107,15 @@ by workers on a task branch.
 
 ### Planning (leader + developer, on trunk)
 
-1. Read the board: `./scripts/board.sh`.
-2. Create tickets with `scripts/new-ticket.sh`, fill bodies, set `depends_on`
-   in frontmatter for ordering, run `scripts/lint.sh`, commit.
-3. Dispatch ready tasks (deps `done`) via `scripts/claim.sh`; hand each
+1. Read the board: `planr board`.
+2. Create tickets with `planr new`, fill bodies, set `depends_on`
+   in frontmatter for ordering, run `planr lint`, commit.
+3. Dispatch ready tasks (deps `done`) via `planr claim`; hand each
    worktree to a worker.
 
 ### Execution (worker, in a worktree)
 
-1. Work in the assigned worktree; `claim.sh` set `status: in_progress`.
+1. Work in the assigned worktree; `planr claim` set `status: in_progress`.
 2. Read the task + parent story; note `depends_on` (already verified `done`).
 3. Edit only your task file + code.
 4. Implement; log to `## Notes`.
@@ -123,22 +124,31 @@ by workers on a task branch.
 
 ### Review (reviewer, fresh context, in the worktree)
 
-1. `scripts/review.sh <slug>` prints branch, worktree, acceptance, and diff.
+1. `planr review <slug>` prints branch, worktree, acceptance, and diff.
 2. Run the acceptance checks yourself.
 3. Edit only the task file's `## Review`: `verdict: approved` (leave
    `status: review`) or `verdict: changes-requested` (flip `status: in_progress`).
 4. Commit; hand back.
 
-### Integration (leader, on trunk)
+### Integration (leader)
 
-1. `scripts/merge-task.sh <slug>`:
-   - requires `status: review` + `verdict: approved` (refuses otherwise with
-     guidance);
-   - `git merge --no-ff`; on conflict, aborts, lists conflicted files, and
-     prints rebase guidance for the worker (worktree + branch preserved);
-   - on success, flips the task to `done` on trunk, removes the worktree,
-     deletes the branch.
-2. Re-branch the next round of workers from fresh trunk.
+1. **`planr close task <slug>`** — three guards then merge:
+   - branch exists;
+   - `status: review`;
+   - `verdict: approved` (refuses otherwise with guidance).
+   On success: flips to `done` **on the branch**, `git merge --no-ff`,
+   removes the worktree, deletes the branch.
+   On conflict: aborts, lists conflicted files, prints rebase guidance
+   for the worker (worktree + branch preserved).
+
+2. **`planr close story <slug>`** — no merge (stories live on trunk):
+   scans child tasks via `parent:` field, refuses unless all are `done`,
+   then flips the story to `done` on trunk and commits.
+
+3. **`planr close epic <slug>`** — same pattern as story: scans child
+   stories for `parent:`, gates on all `done`, flips epic to `done` on trunk.
+
+4. Re-branch the next round of workers from fresh trunk.
 
 ## Concurrency notes
 
@@ -146,21 +156,21 @@ by workers on a task branch.
   both write the same task file because they're in separate checkouts on
   separate branches. `status: in_progress` is a record, not a coordination
   primitive.
-- **Ticket creation** is serialized by a `flock`: `new-ticket.sh` takes an
-  exclusive lock around its read-`ls`-then-write so that parallel invocations
-  (an agent scaffolding a whole epic in one tool block) allocate sequential
-  `NN` sort-hints instead of colliding. A defensive post-write re-scan bails
-  loudly if the prefix is no longer unique. The leader is still the sole
-  creator — workers never create tickets.
-- **Trunk mutation** (`merge-task.sh`) takes the same exclusive lock for its
-  checkout-merge-flip-commit section so it doesn't race a writer or a reader
-  mid-scan.
-- **Readers** (`board.sh`, `review.sh`, `claim.sh`, working-tree `lint.sh`)
-  take a shared lock so they see a consistent snapshot; ref-mode `lint.sh`
-  reads a git snapshot (and is called by `claim.sh`, which already holds the
-  lock), so it takes none. The lock lives at
-  `$(git rev-parse --git-common-dir)/planr.lock`, shared across worktrees and
-  never committed. `flock` is from util-linux.
+- **Ticket creation** is serialized by an in-process `flock`: `planr new`
+  takes an exclusive lock around its read-`ls`-then-write so that parallel
+  invocations (an agent scaffolding a whole epic in one tool block) allocate
+  sequential `NN` sort-hints instead of colliding. A defensive post-write
+  re-scan bails loudly if the prefix is no longer unique. The leader is still
+  the sole creator — workers never create tickets.
+- **Trunk mutation** (`planr close task`) takes the same exclusive lock for
+  its checkout-merge-flip-commit section so it doesn't race a writer or a
+  reader mid-scan.
+- **Readers** (`planr board`, `planr review`, `planr claim`, working-tree
+  `planr lint`) take a shared lock so they see a consistent snapshot;
+  ref-mode `planr lint <ref>` reads a git snapshot, so it takes no lock.
+  The lock lives at `<git-common-dir>/planr.lock`, shared across worktrees
+  and never committed. The `flock` is implemented in-process via the `fs2`
+  crate — no external `flock` binary required.
 - **Review is independent** by construction: the reviewer runs fresh-context
   and reads the worktree, so it is not influenced by the worker's session.
 - **Reading the board** is always safe: `git show` / `git branch` are
@@ -175,9 +185,9 @@ by workers on a task branch.
   branch; the leader creates the new sub-tasks on trunk (with
   `depends_on` as needed) and re-dispatches.
 - **Two tasks touch the same code.** Let them conflict at merge time — that's
-  a real signal the tasks overlap. `merge-task.sh` aborts and tells the worker
-  to rebase onto fresh trunk; resolve by sequencing (merge one, rebase the
-  other) or by re-splitting the work in planning.
+  a real signal the tasks overlap. `planr close task` aborts and tells the
+  worker to rebase onto fresh trunk; resolve by sequencing (merge one, rebase
+  the other) or by re-splitting the work in planning.
 - **Review requests changes.** The branch stays alive with `status: in_progress`
   and a `changes-requested` verdict; the leader re-dispatches the worker to
   the same worktree. The worker addresses the notes, re-validates, and sets
@@ -187,30 +197,30 @@ by workers on a task branch.
 - **Renaming a story/epic.** The parent link is in frontmatter (not the
   filename), so renaming a story's file only requires updating `parent:` in its
   child tasks and any `depends_on` that reference it — a small, well-contained
-  edit the leader does on trunk. Run `scripts/lint.sh` afterwards: it
+  edit the leader does on trunk. Run `planr lint` afterwards: it
   errors on any `parent`/`depends_on` still pointing at the old slug and warns
   on stale `[[wiki-links]]`.
-- **No trunk yet / fresh repo.** `scripts/new-ticket.sh` writes to the working
-  tree; commit `.plan/` to trunk before any `claim.sh` so workers branch from a
+- **No trunk yet / fresh repo.** `planr new` writes to the working tree;
+  commit `.plan/` to trunk before any `planr claim` so workers branch from a
   backlog that exists.
 
 ## What this scheme deliberately does not have
 
 - **No central `index.md` / `board.md` as source of truth.** A board file is a
   derived view; if you commit one, treat it as a regenerable snapshot.
-- **No claim locks or claim markers.** The branch is the claim. (The scripts
-  do use an internal `flock` to serialize prefix allocation and trunk
+- **No claim locks or claim markers.** The branch is the claim. (The binary
+  does use an in-process `flock` to serialize prefix allocation and trunk
   mutation — see [Concurrency notes](#concurrency-notes) — but that is an
   implementation detail, not a coordination primitive agents manage.)
 - **No hierarchical filenames** (`E01/S02/T03`). Flat slugs per kind keep
   renames cheap and `git log` readable; the parent link lives in frontmatter.
 - **No worker-created tickets.** Creation is the leader's job; the `flock`
-  in `new-ticket.sh` keeps prefix allocation sequential even when the leader
+  in `planr new` keeps prefix allocation sequential even when the leader
   batches parallel scaffolding calls.
 - **No self-merge.** `done` requires an independent reviewer's approved
-  verdict; the scripts enforce it.
+  verdict; planr enforces it.
 - **No load-bearing links.** Body `[[wiki-links]]` are soft references for
   humans, agents, and Obsidian; no script reads them. Gating lives only in
   `depends_on`, hierarchy only in `parent` — both in frontmatter, both
-  checked by `lint.sh`. Links are sugar, never state; backlinks are derived
+  checked by `planr lint`. Links are sugar, never state; backlinks are derived
   (`grep`), never stored.

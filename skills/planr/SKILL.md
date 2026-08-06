@@ -15,12 +15,12 @@ git-tracked `.plan/` directory it creates in the repo root.
   developer. It is the **single writer** to the backlog: it creates and edits
   epic/story/task files on trunk, splits and reprioritizes work, dispatches
   workers and reviewers, merges approved task branches into trunk, and
-  regenerates the board. It does **not** implement or review tasks. Planning
+  reads the board. It does **not** implement or review tasks. Planning
   is a single session with the developer, but an agent scaffolding a whole
-  epic will rationally fire several `new-ticket.sh` calls in one parallel
-  tool block — so the scripts serialize prefix allocation and trunk mutation
-  with a `flock` (see [Concurrency](#concurrency) below) rather than rely on
-  the session being strictly sequential.
+  epic will rationally fire several `planr new` calls in one parallel
+  tool block — so the binary serializes prefix allocation and trunk mutation
+  with an in-process `flock` (see [Concurrency](#concurrency) below) rather
+  than rely on the session being strictly sequential.
 - **Worker** — an agent that implements **one task** in a dedicated git
   worktree branched off trunk. It edits only its own task file plus code,
   self-validates against the task's `## Acceptance` criteria, records a
@@ -34,7 +34,7 @@ git-tracked `.plan/` directory it creates in the repo root.
   merges; on changes-requested the task returns to the worker.
 
 `review` → `done` is **never** on the honor system: it requires an independent
-reviewer's approved verdict, which `merge-task.sh` checks before merging.
+reviewer's approved verdict, which `planr close task` checks before merging.
 
 ## The scheme in one paragraph
 
@@ -47,9 +47,10 @@ parent to record child progress** —
 roll-up is *derived* by scanning child files on trunk at read time. There is
 no central mutable index or board file that gets rewritten on every change.
 Claiming a task = branching a worktree; the branch *is* the claim, so no
-claim locks are needed. (The scripts do use a `flock` internally to serialize
-prefix allocation and trunk mutation — see [Concurrency](#concurrency) — but
-that is an implementation detail, not a coordination primitive agents manage.)
+claim locks are needed. (The binary does use an in-process `flock` to
+serialize prefix allocation and trunk mutation — see
+[Concurrency](#concurrency) — but that is an implementation detail, not a
+coordination primitive agents manage.)
 
 ## Trunk vs. worktree
 
@@ -62,7 +63,7 @@ that is an implementation detail, not a coordination primitive agents manage.)
   because each touches only its own ticket file.
 
 Read the board from **trunk plus open branches**, not just your worktree
-checkout. `scripts/board.sh` reads trunk via `git show` for the backlog and
+checkout. `planr board` reads trunk via `git show` for the backlog and
 scans `plan/*` branches for in-flight status (including `review`-ready), so
 review-ready work is visible before merge — no checkout required.
 
@@ -71,7 +72,7 @@ review-ready work is visible before merge — no checkout required.
 1. With the developer, plan the work. Read the current board:
 
    ```bash
-   ./scripts/board.sh                       # backlog (trunk) + in-flight (branches)
+   planr board                            # backlog (trunk) + in-flight (branches)
    ```
 
 2. Create tickets (epics/stories on trunk; tasks under a story, with
@@ -79,9 +80,9 @@ review-ready work is visible before merge — no checkout required.
    allocation is consistent:
 
    ```bash
-   ./scripts/new-ticket.sh epic   v1-ship-self-hosted    "Ship v1 self-hostable hotcell"
-   ./scripts/new-ticket.sh story  network-firewall       "Network firewall"  v1-ship-self-hosted
-   ./scripts/new-ticket.sh task   http-connect-proxy     "HTTP CONNECT allowlist proxy"  network-firewall
+   planr new epic   v1-ship-self-hosted    "Ship v1 self-hostable hotcell"
+   planr new story  network-firewall       "Network firewall"  v1-ship-self-hosted
+   planr new task   http-connect-proxy     "HTTP CONNECT allowlist proxy"  network-firewall
    ```
 
    Then fill the body (Goal / Context / Acceptance / Notes) and edit
@@ -90,35 +91,42 @@ review-ready work is visible before merge — no checkout required.
    fine). After editing frontmatter, lint and commit:
 
    ```bash
-   ./scripts/lint.sh   # dangling parents/deps, duplicate slugs, dependency cycles
+   planr lint         # dangling parents/deps, duplicate slugs, dependency cycles
    git commit ...
    ```
 
-   (`new-ticket.sh` and `claim.sh` also run the lint informationally.)
+   (`planr new` and `planr claim` also run lint informationally.)
 3. Dispatch workers — one per **ready** task (deps all `done`) — each in its
    own worktree:
 
    ```bash
-   ./scripts/claim.sh http-connect-proxy   # creates ../wt-http-connect-proxy on plan/http-connect-proxy; refuses if deps unmet
+   planr claim http-connect-proxy   # creates ../wt-http-connect-proxy on plan/http-connect-proxy; refuses if deps unmet
    ```
 
    Hand the worktree path to the worker agent.
 4. When the board shows a task `review` on its branch, dispatch a reviewer:
 
    ```bash
-   ./scripts/review.sh http-connect-proxy   # prints branch, worktree, acceptance, diff
+   planr review http-connect-proxy   # prints branch, worktree, acceptance, diff
    ```
 
    Hand that to a fresh-context review agent.
-5. When the reviewer records `verdict: approved`, merge:
+5. When the reviewer records `verdict: approved`, close the task:
 
    ```bash
-   ./scripts/merge-task.sh http-connect-proxy   # checks status=review + approved verdict; merges; flips to done
+   planr close task http-connect-proxy   # checks status=review + approved verdict; flips to done on branch; merges; cleans up
    ```
 
    On a merge conflict it aborts and prints rebase guidance for the worker.
    Other in-flight task branches merge independently and conflict-free in
    `.plan/`.
+
+Stories and epics are closed on trunk after all children complete:
+
+   ```bash
+   planr close story network-firewall     # gates on all child tasks done; flips done; commits
+   planr close epic   v1-ship-self-hosted # gates on all child stories done; flips done; commits
+   ```
 
 See [references/PROCESS.md](references/PROCESS.md) for the full process,
 concurrency reasoning, review/validation detail, and edge cases.
@@ -129,31 +137,33 @@ The claim mechanism needs no locks — a worktree branch *is* the claim, so two
 agents cannot both claim the same task. But two operations do mutate shared
 state in the working tree and need serialization:
 
-- **Prefix allocation** (`new-ticket.sh`) is a read-modify-write on a kind's
+- **Prefix allocation** (`planr new`) is a read-modify-write on a kind's
   directory: `ls` for the highest `NN`, then write `NN+1`. Without a lock,
   parallel invocations (an agent scaffolding a whole epic in one tool block)
   all read the same `ls` and all compute the same `NN`, producing colliding
   sort-hints — different slugs, so the existence guard never trips.
-- **Trunk mutation** (`merge-task.sh`) checks out trunk, merges, flips status,
-  and commits; it must not race a reader mid-scan or another writer.
+- **Trunk mutation** (`planr close task`) checks out trunk, merges, flips
+  status, and commits; it must not race a reader mid-scan or another writer.
 
-So the scripts share a single `flock` on `$(git rev-parse --git-common-dir)/planr.lock`:
-writers (`new-ticket.sh`, `merge-task.sh`) take an **exclusive** lock for their
-critical section; readers (`board.sh`, `review.sh`, `claim.sh`, working-tree
-`lint.sh`) take a **shared** lock so they see a consistent snapshot. `flock` is
-from util-linux (standard on Linux). The lock file lives in the git common dir,
-shared across worktrees and never committed. `new-ticket.sh` also re-scans
-after writing and bails if its `NN` is no longer unique — a defensive check
-against manual edits or a future regression that bypasses the lock. See
+So the `planr` binary shares a single `flock` on
+`$(git rev-parse --git-common-dir)/planr.lock`: writers (`planr new`,
+`planr close task/story/epic`) take an **exclusive** lock for their critical
+section; readers (`planr board`, `planr review`, `planr claim`, working-tree
+`planr lint`) take a **shared** lock so they see a consistent snapshot.
+`flock` is implemented in-process via the `fs2` crate — no external `flock`
+binary is required. The lock file lives in the git common dir, shared across
+worktrees and never committed. `planr new` also re-scans after writing and
+bails if its `NN` is no longer unique — a defensive check against manual
+edits or a future regression that bypasses the lock. See
 [references/PROCESS.md](references/PROCESS.md#concurrency-notes) for the full
 reasoning.
 
 ## Worker workflow
 
 1. Start in your assigned worktree (path given by the leader). The task
-   file is already flipped to `in_progress` by `claim.sh`.
+   file is already flipped to `in_progress` by `planr claim`.
 2. Read your task file (`.plan/tasks/<NN>-<slug>.md`) and its parent story for
-   context. Note `depends_on` — those tickets are `done` (claim.sh checked).
+   context. Note `depends_on` — those tickets are `done` (planr claim checked).
    Follow `[[wiki-links]]` in the body for related context.
 3. **Edit only your task file and code.** Do not edit any other `.plan/` file
    — not the parent story, not siblings.
@@ -172,10 +182,10 @@ reasoning.
 ## Reviewer workflow
 
 1. You run in **fresh context** in the task's worktree (path from
-   `scripts/review.sh`). You are independent of the worker; do not trust the
+   `planr review`). You are independent of the worker; do not trust the
    worker's self-validation — re-check.
 2. Read the task file's `## Acceptance` and `## Validation`, the parent story,
-   and the diff (`scripts/review.sh` prints it). **Run the acceptance checks
+   and the diff (`planr review` prints it). **Run the acceptance checks
    yourself** in the worktree.
 3. **Edit only the task file** — never code. Add a `## Review` section:
 
@@ -188,7 +198,7 @@ reasoning.
    ```
 
 4. If `approved`: leave `status: review`, commit, hand back to the leader
-   to merge.
+   to close.
 5. If `changes-requested`: set `verdict: changes-requested`, **flip
    `status: in_progress`**, record concretely what failed, commit, and hand
    back. The leader re-dispatches the worker.
@@ -211,7 +221,7 @@ Ticket bodies may reference other tickets with `[[slug]]` wiki-links —
 links from a `## Notes` log to the ticket that triaged it. Two hard rules:
 
 - **Links are sugar, never state.** No script parses body links; ordering and
-  gating live only in `depends_on`, hierarchy only in `parent`. `lint.sh`
+  gating live only in `depends_on`, hierarchy only in `parent`. `planr lint`
   *warns* (never errors) when a link matches no ticket slug.
 - **Backlinks are derived, never stored** — same philosophy as roll-up:
 
@@ -225,48 +235,59 @@ box, giving you a free read-only UI. The `aliases: [<slug>]` frontmatter field
 (in the templates) is what lets Obsidian resolve `[[slug]]` to the
 `NN-slug.md` file despite the sort-prefix. One caveat: a vault shows the
 *working tree* — the authoritative board is trunk + in-flight branches, which
-only `scripts/board.sh` sees.
+only `planr board` sees.
 
 ## Scripts
 
-| Script | Who | Purpose |
+| Command | Who | Purpose |
 | --- | --- | --- |
-| `scripts/board.sh` | all | Read-only board: backlog from trunk + in-flight/review-ready from `plan/*` branches |
-| `scripts/lint.sh` | leader | Backlog checks: dangling `parent`/`depends_on`, duplicate slugs, dependency cycles (errors); unresolved `[[links]]` (warnings). Lints the working tree, or a ref (`lint.sh main`) |
-| `scripts/new-ticket.sh` | leader | Scaffold a ticket file with next sort-hint + slug; verifies the parent exists; runs `lint.sh` |
-| `scripts/claim.sh` | leader | Create a worktree branch for a task; flips to `in_progress`; refuses if `depends_on` unmet |
-| `scripts/review.sh` | leader/reviewer | Brief a reviewer: branch, worktree, acceptance criteria, diff vs trunk |
-| `scripts/merge-task.sh` | leader | Merge an approved task (`status: review` + `verdict: approved`); flips to `done`; handles conflicts with guidance |
+| `planr board` | all | Read-only board: backlog from trunk + in-flight/review-ready from `plan/*` branches |
+| `planr lint` | leader | Backlog checks: dangling `parent`/`depends_on`, duplicate slugs, dependency cycles (errors); unresolved `[[links]]` (warnings). Lints the working tree, or a ref (`planr lint main`) |
+| `planr new` | leader | Scaffold a ticket file with next sort-hint + slug; verifies the parent exists; runs lint informationally |
+| `planr claim` | leader | Create a worktree branch for a task; flips to `in_progress`; refuses if `depends_on` unmet |
+| `planr review` | leader/reviewer | Brief a reviewer: branch, worktree, acceptance criteria, diff vs trunk |
+| `planr close task` | leader | Merge an approved task (`status: review` + `verdict: approved`); flips to `done` on the branch before merge; handles conflicts with guidance |
+| `planr close story` | leader | Gate all child tasks done → flip story `done` on trunk |
+| `planr close epic` | leader | Gate all child stories done → flip epic `done` on trunk |
 
-All scripts honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
+All commands honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 `.plan`) env vars, so the scheme works in any repo without editing the skill.
 
-**Implementation:** all six scripts are TypeScript, bundled into
-`dist/cli/*.cjs`; the `.sh` files are thin shims (`exec node
-"$(dirname "$0")/../dist/cli/<name>.cjs" "$@"`) so invocation is unchanged.
-The bundle includes the YAML parser — no `node_modules` is needed at
-runtime. The dev project (TypeScript source, vitest tests, `package.json`,
-`tsconfig.json`) lives in this same folder; `npm run build` (dev-time)
-regenerates `dist/`, and the shipped skill folder carries its own `dist/` so
-the copy stays self-contained.
+**Implementation:** all six subcommands are implemented in a single Rust
+binary (`planr`). The `.sh` files in `scripts/` are thin shims
+(`exec planr <subcommand> "$@"`) for backward compatibility. The binary
+embeds its own YAML parser and templates — no `node_modules` is needed at
+any point. Install the binary from source or download a prebuilt release.
 
-`tests/run-tests.sh` exercises the scripts end-to-end in a throwaway git repo
-(creation guards, cross-story dependency gating, every lint class); run it
-after changing any script.
+## Installing planr
+
+```bash
+# From source (requires Rust)
+cargo install --git https://github.com/unprofessor/planr-cli.git
+
+# Or download a prebuilt release from:
+# https://github.com/unprofessor/planr-cli/releases
+```
+
+Verify installation:
+
+```bash
+planr --version    # should print 0.1.0
+planr --help       # full usage
+```
 
 ## Troubleshooting
 
-### Merge conflict during `merge-task.sh`
+### Merge conflict during `planr close task`
 
-**Symptom:** `merge-task.sh` prints "merge conflict in: <file>" and aborts.
+**Symptom:** `planr close task` prints "merge conflict in: <file>" and aborts.
 **Cause:** Another task's branch merged since this worktree was cut, touching the same code.
 **Resolution:** The worktree and branch are preserved. Rebase onto fresh trunk:
 
 ```bash
-cd $wt                        # the worktree path printed during merge-task
-# or find it: git worktree list
+cd $wt                        # the worktree path from git worktree list
 git rebase main               # resolve conflicts, git add, git rebase --continue
-# then the leader re-runs: scripts/merge-task.sh <slug>
+# then the leader re-runs: planr close task <slug>
 ```
 
 This is a real signal the tasks overlap — consider re-splitting the work if
@@ -278,7 +299,7 @@ rebases keep hurting.
 
 **Symptom:** A worktree directory exists but its branch was already merged
 or deleted. `git worktree list` shows the worktree but `git branch` does not.
-**Cause:** The merge succeeded but the worktree removal was interrupted
+**Cause:** The close succeeded but the worktree removal was interrupted
 (e.g., agent disconnected mid-merge).
 **Resolution:**
 
@@ -303,7 +324,7 @@ worker agent disconnected. The leader needs to recover progress.
 4. Re-dispatch the same worker (or a fresh one) to the same worktree.
    The worker picks up from `## Notes` and any staged/uncommitted work.
 
-The leader can also use `scripts/review.sh <slug>` (read-only) to inspect
+The leader can also use `planr review <slug>` (read-only) to inspect
 the branch without entering the worktree.
 
 ---
@@ -317,10 +338,10 @@ the reviewer is running in a different shell session.
 **Resolution:**
 
 ```bash
-# The leader runs: scripts/review.sh <slug>
+# The leader runs: planr review <slug>
 # This prints the worktree path, branch, acceptance, and diff.
 #
-# Fallback if review.sh is unavailable:
+# Fallback if planr is unavailable:
 git worktree list
 ```
 
@@ -330,7 +351,7 @@ The worktree is always at `../wt-<slug>/` relative to the repo root.
 
 ### Dependency cycle detected
 
-**Symptom:** `scripts/lint.sh` prints:
+**Symptom:** `planr lint` prints:
 
 ```
 depends_on cycle: A → B → C → A — nothing in the cycle can ever be claimed
@@ -345,35 +366,14 @@ another.
 2. One of the edges is wrong — the dependency goes the opposite direction
    or shouldn't exist.
 3. Edit `depends_on` on trunk for the offending ticket(s) to break the loop.
-4. Re-run `scripts/lint.sh` to confirm the cycle is gone.
+4. Re-run `planr lint` to confirm the cycle is gone.
 5. Commit the fix.
-
----
-
-### Cross-platform sed issues
-
-**Symptom:** `scripts/lint.sh` or another script fails on macOS with
-"invalid flag" or unexpected output.
-**Cause:** BSD `sed` (macOS default) uses different flag syntax than GNU
-`sed` (Linux, WSL, Git for Windows). The scripts are written for GNU sed.
-**Resolution:**
-
-```bash
-# Install GNU sed
-brew install gnu-sed
-# Make it the default for sed calls
-export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
-```
-
-After this, `sed` invocations in scripts work as written. The scripts
-shipped with planr use GNU sed features (`-E` extended regex, `+` repetition)
-that BSD sed does not support.
 
 ---
 
 ### "refuse claim" — task has unfinished dependencies
 
-**Symptom:** `scripts/claim.sh` prints:
+**Symptom:** `planr claim` prints:
 
 ```
 refuse claim: '<slug>' has unfinished depends_on: <list>
@@ -384,7 +384,7 @@ resolve or complete these first, or have the leader update depends_on.
 `status: done` on trunk.
 **Resolution:**
 
-- Check `scripts/board.sh` for the blockers' statuses.
+- Check `planr board` for the blockers' statuses.
 - Dispatch those tasks first, or ask the leader to update `depends_on` if
 the dependency is incorrect.
 
@@ -392,7 +392,7 @@ the dependency is incorrect.
 
 ### "refuse merge" — task not in review or no approval
 
-**Symptom:** `scripts/merge-task.sh` prints:
+**Symptom:** `planr close task` prints:
 
 ```
 refuse merge: task '<slug>' status is '<status>', must be 'review'
@@ -408,21 +408,12 @@ reviewer.
 - If status isn't `review`: the worker must self-validate and set
   `status: review` first.
 - If status is `review` but no approved verdict: dispatch a reviewer via
-  `scripts/review.sh <slug>`.
+  `planr review <slug>`.
 
 ## Extracting this skill
 
 This skill is self-contained and project-agnostic. To use it in another
-project, copy `.agents/skills/planr/` into that repo's `.agents/skills/` (or
-`~/.agents/skills/` for global use). The `.plan/` directory it produces is the
-only project-specific data.
-
-**Build step (dev-time only):** the skill ships as compiled JS. In the
-source repo (the `agent-skills` tap), `cd skills/planr` then run
-`npm install && npm run build` to regenerate `dist/cli/*.cjs` (esbuild
-bundles the TypeScript + YAML parser into each CLI). The skill folder
-includes its built `dist/`, so the copy at the target is fully
-self-contained — no `npm install` or build is needed there. If you are
-copying from a fresh clone, build first, then copy the folder *including*
-its `dist/` (the `src/`, `tests/`, `package.json`, and `tsconfig.json` are
-dev-only and can be stripped from a copy).
+project, copy `skills/planr/` from the `agent-skills` tap into that repo's
+`.agents/skills/` (or `~/.agents/skills/` for global use). The `.plan/`
+directory it produces is the only project-specific data. The `planr` binary
+must be installed separately (see [Installing planr](#installing-planr)).

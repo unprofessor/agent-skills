@@ -16,10 +16,10 @@
   Example: `http-connect-proxy`. The slug is the identity; frontmatter `id`
   repeats it for grep.
 - Uniqueness is guaranteed by the leader being the sole creator and checked
-  by `scripts/lint.sh` (a duplicate slug anywhere in the backlog is an error).
+  by `planr lint` (a duplicate slug anywhere in the backlog is an error).
   Prefix allocation is serialized with a `flock` (see
   [../SKILL.md#concurrency](../SKILL.md#concurrency)), so even parallel
-  `new-ticket.sh` calls produce sequential `NN`s rather than colliding.
+  `planr new` calls produce sequential `NN`s rather than colliding.
 
 ## Frontmatter (YAML)
 
@@ -44,16 +44,15 @@ depends_on: []                    # slugs of any tickets that must be done first
 | Field | Required | Notes |
 | --- | --- | --- |
 | `id` | yes | The slug; matches filename without `.md`. |
-| `aliases` | no | `[<slug>]`, so Obsidian resolves `[[slug]]` links despite the `NN-` filename prefix. Never read by scripts. |
+| `aliases` | no | `[<slug>]`, so Obsidian resolves `[[slug]]` links despite the `NN-` filename prefix. Never read by tools. |
 | `kind` | yes | `epic`, `story`, or `task`. |
-| `parent` | stories & tasks | The parent's slug. Omit entirely for epics. `lint.sh` errors if the slug doesn't exist. |
+| `parent` | stories & tasks | The parent's slug. Omit entirely for epics. `planr lint` errors if the slug doesn't exist. |
 | `title` | yes | Human-readable; may differ from slug. |
 | `status` | yes | `todo` · `in_progress` · `review` · `done` · `blocked`. |
 | `assignee` | no | Agent id when claimed; `null` otherwise. |
 | `created` | yes | `YYYY-MM-DD`. |
 | `updated` | yes | `YYYY-MM-DD`; bump on any edit. |
-| `tags` | no | Free-form list. |
-| `depends_on` | no | List of ticket slugs — **any** ticket, not just siblings — that must be `done` before this ticket is dispatchable. Enforced by `claim.sh`; shown as `BLOCKED-BY` on the board; `lint.sh` errors on dangling slugs and cycles. Any valid YAML list form works (inline `[a, b]` or block-style `\n  - a`). Prefer this over the `blocked` status for ordering within the plan. |
+| `depends_on` | no | List of ticket slugs — **any** ticket, not just siblings — that must be `done` before this ticket is dispatchable. Enforced by `planr claim`; shown as `BLOCKED-BY` on the board; `planr lint` errors on dangling slugs and cycles. Any valid YAML list form works (inline `[a, b]` or block-style `\n  - a`). Prefer this over the `blocked` status for ordering within the plan. |
 
 ### Status lifecycle
 
@@ -71,14 +70,14 @@ todo  -->  in_progress  -->  review  -->  done
 - `review` — worker has self-validated against `## Acceptance` and recorded
   `## Validation`; awaiting independent review.
 - `done` — an independent reviewer approved (`## Review` verdict: approved)
-  and the leader merged. Only ever appears on trunk after `merge-task.sh`.
+  and the leader closed. Only ever appears after `planr close task`.
 - `blocked` — cannot proceed for a reason a dependency can't express (external
   decision, etc.); reason in `## Notes`. Prefer `depends_on` for ordering
   within the plan.
 
 **`review` → `done` is never self-served.** A worker sets `review`; a
-reviewer's approved verdict + the leader's merge set `done`. The scripts
-enforce this: `merge-task.sh` refuses a merge without `status: review` and an
+reviewer's approved verdict + the leader's close set `done`. The tool enforces
+this: `planr close task` refuses a merge without `status: review` and an
 approved `## Review` verdict.
 
 ## Body
@@ -134,9 +133,9 @@ Part of [[network-firewall]]. Builds on the resolver from
 
 The target is the **slug** (not the `NN-` filename); `|label` and `#heading`
 suffixes are fine. Links are soft context — related work, discovered-from,
-supersedes — and are **never parsed by scripts**: ordering/gating lives only
+supersedes — and are **never parsed by tools**: ordering/gating lives only
 in `depends_on`, hierarchy only in `parent`. Backlinks are derived, not
-stored: `grep -rn '\[\[<slug>' .plan/`. `lint.sh` warns (never errors) on a
+stored: `grep -rn '\[\[<slug>' .plan/`. `planr lint` warns (never errors) on a
 link that matches no ticket slug, since links may legitimately point at
 non-ticket notes. The `aliases` frontmatter field makes `[[slug]]` resolve in
 Obsidian, so `.plan/` doubles as a vault (graph view + backlinks as a free
@@ -144,7 +143,7 @@ read-only UI over the working tree).
 
 ### Review verdict format (machine-checked)
 
-`merge-task.sh` parses the `## Review` section for a `verdict:` line. Use
+`planr close task` parses the `## Review` section for a `verdict:` line. Use
 exactly:
 
 ```markdown
@@ -158,8 +157,8 @@ verdict: changes-requested
 ```
 
 If a second review round occurs, append a new `## Review` block dated beneath
-the first (do not delete history); `merge-task.sh` reads the *last* `## Review`
-block's verdict.
+the first (do not delete history); `planr close task` reads the *last*
+`## Review` block's verdict.
 
 ## Examples
 
