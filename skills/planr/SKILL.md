@@ -121,12 +121,16 @@ review-ready work is visible before merge — no checkout required.
    Other in-flight task branches merge independently and conflict-free in
    `.plan/`.
 
-Stories and epics are closed on trunk after all children complete:
+When all children of a story or epic are done, close the parent:
 
    ```bash
-   planr close story network-firewall     # gates on all child tasks done; flips done; commits
-   planr close epic   v1-ship-self-hosted # gates on all child stories done; flips done; commits
+   planr close story network-firewall     # gates on all child tasks done; flips done before final merge
+   planr close epic   v1-ship-self-hosted # gates on all child stories done; flips done before final merge
    ```
+
+After closing a task, `planr close task` prints a hint if the parent story
+can also be closed; similarly `planr close story` hints when the parent epic
+can be closed.
 
 See [references/PROCESS.md](references/PROCESS.md) for the full process,
 concurrency reasoning, review/validation detail, and edge cases.
@@ -247,8 +251,8 @@ only `planr board` sees.
 | `planr claim` | leader | Create a worktree branch for a task; flips to `in_progress`; refuses if `depends_on` unmet |
 | `planr review` | leader/reviewer | Brief a reviewer: branch, worktree, acceptance criteria, diff vs trunk |
 | `planr close task` | leader | Merge an approved task (`status: review` + `verdict: approved`); flips to `done` on the branch before merge; handles conflicts with guidance |
-| `planr close story` | leader | Gate all child tasks done → flip story `done` on trunk |
-| `planr close epic` | leader | Gate all child stories done → flip epic `done` on trunk |
+| `planr close story` | leader | Gate all child tasks done → flip story `done` before final task merge |
+| `planr close epic` | leader | Gate all child stories done → flip epic `done` before final story merge |
 
 All commands honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 `.plan`) env vars, so the scheme works in any repo without editing the skill.

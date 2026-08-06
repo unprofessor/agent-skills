@@ -141,12 +141,14 @@ by workers on a task branch.
    On conflict: aborts, lists conflicted files, prints rebase guidance
    for the worker (worktree + branch preserved).
 
-2. **`planr close story <slug>`** — no merge (stories live on trunk):
+2. **`planr close story <slug>`** — gated close:
    scans child tasks via `parent:` field, refuses unless all are `done`,
-   then flips the story to `done` on trunk and commits.
+   then flips the story to `done` on the final task's branch before merge.
+   Prints a hint if the parent epic can also be closed.
 
 3. **`planr close epic <slug>`** — same pattern as story: scans child
-   stories for `parent:`, gates on all `done`, flips epic to `done` on trunk.
+   stories for `parent:`, gates on all `done`, flips epic to `done` on
+   the final story's branch before merge.
 
 4. Re-branch the next round of workers from fresh trunk.
 

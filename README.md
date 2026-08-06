@@ -10,7 +10,7 @@ AI agents, each in its own directory under `skills/`.
 ## What's inside
 
 | Skill | What it does |
-|---|---|
+| --- | --- |
 | [`planr`](skills/planr/SKILL.md) | Trunk-based backlog for multi-agent work: epics/stories/tasks as one file per ticket, worktree-per-worker, independent reviewer before merge. |
 | [`tend-pr`](skills/tend-pr/SKILL.md) | Tend an open PR: poll reviewer comments on a schedule, dedupe, draft gated replies. |
 | [`skill-promotion`](skills/skill-promotion/SKILL.md) | Promote local skills into this tap (and sync edits back): the meta-skill for maintaining this repo. |

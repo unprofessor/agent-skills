@@ -72,7 +72,7 @@ planr claim dns
 # 5. Implement in the worktree, then flip to review.
 # 6. Review with planr review dns; close with planr close task dns.
 # 7. Close the story/epic after all children done:
-#    planr close story net
+#    planr close story net    # prints hint if epic can also be closed
 #    planr close epic   v1
 ```
 
@@ -88,8 +88,8 @@ See [SKILL.md](SKILL.md) for the full process.
 | `planr claim` | leader | Create a worktree branch; flips to `in_progress` |
 | `planr review` | leader/reviewer | Brief a reviewer: branch, worktree, acceptance, diff |
 | `planr close task` | leader | Merge approved task; flips done on branch before merge |
-| `planr close story` | leader | Gate children done → flip done on trunk |
-| `planr close epic` | leader | Gate stories done → flip done on trunk |
+| `planr close story` | leader | Gate children done → flip done on branch before final task merge |
+| `planr close epic` | leader | Gate stories done → flip done on branch before final story merge |
 
 ## Prerequisites
 
