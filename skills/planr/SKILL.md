@@ -267,10 +267,10 @@ any point. Install the binary from source or download a prebuilt release.
 
 ```bash
 # From source (requires Rust)
-cargo install --git https://github.com/unprofessor/planr-cli.git
+cargo install --git https://github.com/unprofessor/planr-rs.git
 
 # Or download a prebuilt release from:
-# https://github.com/unprofessor/planr-cli/releases
+# https://github.com/unprofessor/planr-rs/releases
 ```
 
 Verify installation:

@@ -100,8 +100,8 @@ See [SKILL.md](SKILL.md) for the full process.
 Install the binary:
 
 ```bash
-cargo install --git https://github.com/unprofessor/planr-cli.git
-# or download from https://github.com/unprofessor/planr-cli/releases
+cargo install --git https://github.com/unprofessor/planr-rs.git
+# or download from https://github.com/unprofessor/planr-rs/releases
 ```
 
 ## Environment
