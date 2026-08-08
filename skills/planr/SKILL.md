@@ -241,7 +241,7 @@ box, giving you a free read-only UI. The `aliases: [<slug>]` frontmatter field
 *working tree* — the authoritative board is trunk + in-flight branches, which
 only `planr board` sees.
 
-## Scripts
+## Commands
 
 | Command | Who | Purpose |
 | --- | --- | --- |
@@ -257,10 +257,9 @@ only `planr board` sees.
 All commands honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 `.plan`) env vars, so the scheme works in any repo without editing the skill.
 
-**Implementation:** all six subcommands are implemented in a single Rust
+**Implementation:** all subcommands are implemented in a single Rust
 binary (`planr`). The binary embeds its own YAML parser and templates — no
-`node_modules` is needed at any point. Install the binary from source or
-download a prebuilt release.
+runtime dependencies beyond the binary itself.
 
 ## Installing planr
 
@@ -275,7 +274,7 @@ cargo install --git https://github.com/unprofessor/planr-rs.git
 Verify installation:
 
 ```bash
-planr --version    # should print 0.1.0
+planr --version    # confirm the binary is installed
 planr --help       # full usage
 ```
 
