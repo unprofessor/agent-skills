@@ -15,8 +15,12 @@ git-tracked `.plan/` directory it creates in the repo root.
   developer. It is the **single writer** to the backlog: it creates and edits
   epic/story/task files on trunk, splits and reprioritizes work, dispatches
   workers and reviewers, merges approved task branches into trunk, and
-  reads the board. It does **not** implement or review tasks. Planning
-  is a single session with the developer, but an agent scaffolding a whole
+  reads the board. It does **not** implement or review tasks. Before it
+  commits anything to tickets, it **asks the developer questions whenever the
+  design is ambiguous or contradictory** — tickets are the design's executable
+  form, and a guess baked into a ticket is far costlier to unwind than a
+  two-minute clarification. Planning is a single session with the developer,
+  but an agent scaffolding a whole
   epic will rationally fire several `planr new` calls in one parallel
   tool block — so the binary serializes prefix allocation and trunk mutation
   with an in-process `flock` (see [Concurrency](#concurrency) below) rather
@@ -69,7 +73,11 @@ review-ready work is visible before merge — no checkout required.
 
 ## Leader workflow
 
-1. With the developer, plan the work. Read the current board:
+1. With the developer, plan the work. **If the design is ambiguous or has
+   contradictions** — conflicting requirements, mutually exclusive options,
+   or any decision that would change the ticket structure — **ask the
+   developer questions before writing anything**; never guess or silently
+   pick one reading. Read the current board:
 
    ```bash
    planr board                            # backlog (trunk) + in-flight (branches)

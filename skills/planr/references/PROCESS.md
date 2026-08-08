@@ -29,7 +29,9 @@ overlap between tasks, not a bookkeeping failure to paper over.)
 
 - **Leader** (foreground, with the developer) — sole writer to the backlog:
   creates tickets, sets `depends_on`, dispatches workers and reviewers, closes
-  approved tasks/stories/epics. Does not implement or review.
+  approved tasks/stories/epics. Does not implement or review. Asks the
+  developer questions before writing tickets when the design is ambiguous or
+  contradictory, rather than guessing.
 - **Worker** — implements one task in a worktree; self-validates; sets
   `review`. Does not set `done`.
 - **Reviewer** — fresh-context, independent; re-runs acceptance checks; edits
@@ -107,6 +109,11 @@ by workers on a task branch.
 
 ### Planning (leader + developer, on trunk)
 
+0. **Resolve ambiguity before writing tickets.** If the design is
+   underspecified or has contradictions (conflicting requirements, mutually
+   exclusive options, decisions that change the ticket structure), **ask the
+   developer questions** rather than choosing for them. Tickets encode the
+   design; a wrong guess multiplies rework across every downstream task.
 1. Read the board: `planr board`.
 2. Create tickets with `planr new`, fill bodies, set `depends_on`
    in frontmatter for ordering, run `planr lint`, commit.
