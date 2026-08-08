@@ -117,12 +117,5 @@ README.md             # This file
 references/
   PROCESS.md          # Full process documentation
   TICKET-FORMAT.md    # Ticket format reference
-scripts/
-  board.sh            # Thin shims → planr board, etc.
-  claim.sh
-  lint.sh
-  merge-task.sh
-  new-ticket.sh
-  review.sh
 templates/            # Starter ticket files (epic.md, story.md, task.md)
 ```

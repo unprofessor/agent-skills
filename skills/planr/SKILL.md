@@ -258,10 +258,9 @@ All commands honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 `.plan`) env vars, so the scheme works in any repo without editing the skill.
 
 **Implementation:** all six subcommands are implemented in a single Rust
-binary (`planr`). The `.sh` files in `scripts/` are thin shims
-(`exec planr <subcommand> "$@"`) for backward compatibility. The binary
-embeds its own YAML parser and templates — no `node_modules` is needed at
-any point. Install the binary from source or download a prebuilt release.
+binary (`planr`). The binary embeds its own YAML parser and templates — no
+`node_modules` is needed at any point. Install the binary from source or
+download a prebuilt release.
 
 ## Installing planr
 
