@@ -19,12 +19,7 @@ git-tracked `.plan/` directory it creates in the repo root.
   commits anything to tickets, it **asks the developer questions whenever the
   design is ambiguous or contradictory** — tickets are the design's executable
   form, and a guess baked into a ticket is far costlier to unwind than a
-  two-minute clarification. Planning is a single session with the developer,
-  but an agent scaffolding a whole
-  epic will rationally fire several `planr new` calls in one parallel
-  tool block — so the binary serializes prefix allocation and trunk mutation
-  with an in-process `flock` (see [Concurrency](#concurrency) below) rather
-  than rely on the session being strictly sequential.
+  two-minute clarification.
 - **Worker** — an agent that implements **one task** in a dedicated git
   worktree branched off trunk. It edits only its own task file plus code,
   self-validates against the task's `## Acceptance` criteria, records a
@@ -173,39 +168,15 @@ When all children of a story or epic are done, close the parent:
    planr close epic   v1-ship-self-hosted # gates on all child stories done; flips done before final merge
    ```
 
-After closing a task, `planr close task` prints a hint if the parent story
-can also be closed; similarly `planr close story` hints when the parent epic
-can be closed.
-
 See [references/PROCESS.md](references/PROCESS.md) for the full process,
 concurrency reasoning, review/validation detail, and edge cases.
 
 ## Concurrency
 
-The claim mechanism needs no locks — a worktree branch *is* the claim, so two
-agents cannot both claim the same task. But two operations do mutate shared
-state in the working tree and need serialization:
-
-- **Prefix allocation** (`planr new`) is a read-modify-write on a kind's
-  directory: `ls` for the highest `NN`, then write `NN+1`. Without a lock,
-  parallel invocations (an agent scaffolding a whole epic in one tool block)
-  all read the same `ls` and all compute the same `NN`, producing colliding
-  sort-hints — different slugs, so the existence guard never trips.
-- **Trunk mutation** (`planr close task`) checks out trunk, merges, flips
-  status, and commits; it must not race a reader mid-scan or another writer.
-
-So the `planr` binary shares a single `flock` on
-`$(git rev-parse --git-common-dir)/planr.lock`: writers (`planr new`,
-`planr close task/story/epic`) take an **exclusive** lock for their critical
-section; readers (`planr board`, `planr review`, `planr claim`, working-tree
-`planr lint`) take a **shared** lock so they see a consistent snapshot.
-`flock` is implemented in-process via the `fs2` crate — no external `flock`
-binary is required. The lock file lives in the git common dir, shared across
-worktrees and never committed. `planr new` also re-scans after writing and
-bails if its `NN` is no longer unique — a defensive check against manual
-edits or a future regression that bypasses the lock. See
-[references/PROCESS.md](references/PROCESS.md#concurrency-notes) for the full
-reasoning.
+Two operations need serialization: `planr new` (prefix allocation) and
+`planr close task` (trunk mutation). The `planr` binary handles this with
+an in-process `flock` — no action needed from agents. See
+[references/PROCESS.md](references/PROCESS.md#concurrency-notes) for details.
 
 ## Worker workflow
 
@@ -254,37 +225,17 @@ reasoning.
 
 ## Ticket format
 
-Descriptive slug filenames, YAML frontmatter + markdown body. Frontmatter
-includes `depends_on` (slugs of any tickets that must be `done` before this
-one is dispatchable). The body grows through the lifecycle: `## Acceptance`
-(created by the leader) → `## Validation` (worker) → `## Review` (reviewer). See
-[references/TICKET-FORMAT.md](references/TICKET-FORMAT.md) for the full schema,
-slug rules, status lifecycle, and review format; [templates/](templates/) has
+One file per ticket under `.plan/{epics,stories,tasks}/`. See
+[references/TICKET-FORMAT.md](references/TICKET-FORMAT.md) for schema, slug
+rules, status lifecycle, and review format; [templates/](templates/) for
 starter files.
 
-## Links between tickets (Obsidian-compatible)
+## Links between tickets
 
-Ticket bodies may reference other tickets with `[[slug]]` wiki-links —
-`[[http-connect-proxy]]`, or `[[http-connect-proxy|the proxy task]]` — for
-*soft* relationships: related work, "discovered while working on", "supersedes",
-links from a `## Notes` log to the ticket that triaged it. Two hard rules:
-
-- **Links are sugar, never state.** No script parses body links; ordering and
-  gating live only in `depends_on`, hierarchy only in `parent`. `planr lint`
-  *warns* (never errors) when a link matches no ticket slug.
-- **Backlinks are derived, never stored** — same philosophy as roll-up:
-
-  ```bash
-  grep -rn '\[\[http-connect-proxy' .plan/   # who references this ticket?
-  ```
-
-Because tickets are frontmatter + wiki-links, `.plan/` opens directly as an
-**Obsidian vault** — graph view, backlinks pane, and properties work out of the
-box, giving you a free read-only UI. The `aliases: [<slug>]` frontmatter field
-(in the templates) is what lets Obsidian resolve `[[slug]]` to the
-`NN-slug.md` file despite the sort-prefix. One caveat: a vault shows the
-*working tree* — the authoritative board is trunk + in-flight branches, which
-only `planr board` sees.
+Ticket bodies may use `[[slug]]` wiki-links for soft cross-references. Links
+are sugar — ordering and gating live only in `depends_on` and `parent`. See
+[references/TICKET-FORMAT.md](references/TICKET-FORMAT.md#wiki-links-soft-references)
+for details.
 
 ## Commands
 
@@ -372,137 +323,15 @@ planr --help       # full usage
 
 ## Troubleshooting
 
-### Merge conflict during `planr close task`
-
-**Symptom:** `planr close task` prints "merge conflict in: <file>" and aborts.
-**Cause:** Another task's branch merged since this worktree was cut, touching the same code.
-**Resolution:** The worktree and branch are preserved. Rebase onto fresh trunk:
-
-```bash
-cd $wt                        # the worktree path from git worktree list
-git rebase main               # resolve conflicts, git add, git rebase --continue
-# then the leader re-runs: planr close task <slug>
-```
-
-This is a real signal the tasks overlap — consider re-splitting the work if
-rebases keep hurting.
-
----
-
-### Stale worktree after branch cleanup
-
-**Symptom:** A worktree directory exists but its branch was already merged
-or deleted. `git worktree list` shows the worktree but `git branch` does not.
-**Cause:** The close succeeded but the worktree removal was interrupted
-(e.g., agent disconnected mid-merge).
-**Resolution:**
-
-```bash
-# Remove the stale worktree
-git worktree prune
-git worktree remove ../wt-<slug> -f   # if prune alone doesn't clear it
-```
-
----
-
-### Worker interrupted mid-task
-
-**Symptom:** A worktree branch exists with `status: in_progress` but the
-worker agent disconnected. The leader needs to recover progress.
-**Resolution:**
-
-1. Read the task file in the worktree: `cat .plan/tasks/<NN>-<slug>.md` —
-   check the `## Notes` section for findings already logged.
-2. Check `git log` in the worktree for incremental commits the worker made.
-3. Check for uncommitted changes: `git status` in the worktree.
-4. Re-dispatch the same worker (or a fresh one) to the same worktree.
-   The worker picks up from `## Notes` and any staged/uncommitted work.
-
-The leader can also use `planr review <slug>` (read-only) to inspect
-the branch without entering the worktree.
-
----
-
-### Reviewer cannot find the worktree
-
-**Symptom:** The review agent says "I don't see the worktree" or "path
-not found."
-**Cause:** The leader dispatched the reviewer without the worktree path, or
-the reviewer is running in a different shell session.
-**Resolution:**
-
-```bash
-# The leader runs: planr review <slug>
-# This prints the worktree path, branch, acceptance, and diff.
-#
-# Fallback if planr is unavailable:
-git worktree list
-```
-
-The worktree is always at `../wt-<slug>/` relative to the repo root.
-
----
-
-### Dependency cycle detected
-
-**Symptom:** `planr lint` prints:
-
-```
-depends_on cycle: A → B → C → A — nothing in the cycle can ever be claimed
-```
-
-**Cause:** Two or more tickets list each other in `depends_on`, forming a
-loop. Tickets in a cycle can never all be `done` because each waits on
-another.
-**Resolution:**
-
-1. Read the cycle path from the error (e.g., `http-connect → firewall → http-connect`).
-2. One of the edges is wrong — the dependency goes the opposite direction
-   or shouldn't exist.
-3. Edit `depends_on` on trunk for the offending ticket(s) to break the loop.
-4. Re-run `planr lint` to confirm the cycle is gone.
-5. Commit the fix.
-
----
-
-### "refuse claim" — task has unfinished dependencies
-
-**Symptom:** `planr claim` prints:
-
-```
-refuse claim: '<slug>' has unfinished depends_on: <list>
-resolve or complete these first, or have the leader update depends_on.
-```
-
-**Cause:** One or more of the task's `depends_on` prerequisites are not
-`status: done` on trunk.
-**Resolution:**
-
-- Check `planr board` for the blockers' statuses.
-- Dispatch those tasks first, or ask the leader to update `depends_on` if
-the dependency is incorrect.
-
----
-
-### "refuse merge" — task not in review or no approval
-
-**Symptom:** `planr close task` prints:
-
-```
-refuse merge: task '<slug>' status is '<status>', must be 'review'
-# or:
-refuse merge: no approved review verdict on '<slug>'
-```
-
-**Cause:** The task hasn't been validated and flipped to `status: review`
-by the worker, or hasn't been reviewed and approved by an independent
-reviewer.
-**Resolution:**
-
-- If status isn't `review`: the worker must self-validate and set
-  `status: review` first.
-- If status is `review` but no approved verdict: dispatch a reviewer via
-  `planr review <slug>`.
+| Symptom | Resolution |
+| --- | --- |
+| Merge conflict on close | `cd $wt && git rebase main`, resolve, `git rebase --continue`, re-run `planr close task <slug>` |
+| Stale worktree (branch gone) | `git worktree prune && git worktree remove ../wt-<slug> -f` |
+| Worker disconnected mid-task | Read `## Notes` + `git log` in worktree; re-dispatch worker to same worktree |
+| Reviewer path not found | Worktree is always `../wt-<slug>/` — verify with `git worktree list` |
+| `planr lint` reports a cycle | Edit `depends_on` to break the loop; `planr lint` to confirm; commit |
+| `planr claim` refuses (unmet deps) | Check `planr board` for blockers; dispatch those first or edit `depends_on` |
+| `planr close` refuses (not review or no approval) | Not `status: review`? Worker self-validate. No approved verdict? Dispatch reviewer. |
 
 ## Extracting this skill
 
