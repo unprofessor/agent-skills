@@ -71,6 +71,20 @@ checkout. `planr board` reads trunk via `git show` for the backlog and
 scans `plan/*` branches for in-flight status (including `review`-ready), so
 review-ready work is visible before merge — no checkout required.
 
+## Orchestration with subagents
+
+The leader delegates to subagents (workers, reviewers). Two worktree
+integration patterns, chosen per dispatch:
+
+```
+A (subtree-managed): subagent runtime owns isolation via worktree:true
+B (planr-claimed):   leader runs planr claim, points subagent cwd at worktree
+```
+
+Principles (both): qualify deps → assign → dispatch in waves via `runs.all`
+→ batch reviewers with fresh context → close sequentially (trunk mutation is
+serial). Launch workers async and continue leader work while they run.
+
 ## Leader workflow
 
 1. With the developer, plan the work. **If the design is ambiguous or has
@@ -111,14 +125,37 @@ review-ready work is visible before merge — no checkout required.
    planr claim http-connect-proxy   # creates ../wt-http-connect-proxy on plan/http-connect-proxy; refuses if deps unmet
    ```
 
-   Hand the worktree path to the worker agent.
+   Hand the worktree path to the worker agent. To dispatch multiple workers
+   in parallel, batch-claim then use `runs.all` with `cwd` per worktree
+   (Pattern B), or skip `planr claim` and use `worktree: true` (Pattern A):
+
+   ```javascript
+   // Pattern B — workers in claimed worktrees
+   subagent({workflowScript:`return runs.all([
+     {key:"proxy", agent:"worker", task:"Implement per ##Acceptance", cwd:"../wt-http-connect-proxy"},
+     {key:"dns",   agent:"worker", task:"Implement per ##Acceptance", cwd:"../wt-dns-allowlist"}
+   ])`, async:true})
+   ```
+
+   Launch workers asynchronously and continue leader work while they run.
 4. When the board shows a task `review` on its branch, dispatch a reviewer:
 
    ```bash
    planr review http-connect-proxy   # prints branch, worktree, acceptance, diff
    ```
 
-   Hand that to a fresh-context review agent.
+   Hand that to a fresh-context review agent. For multiple review-ready
+   tasks, dispatch reviewers in parallel:
+
+   ```javascript
+   subagent({workflowScript:`return runs.all([
+     {key:"r-proxy", agent:"reviewer", task:"Review per ##Acceptance", cwd:"../wt-http-connect-proxy"},
+     {key:"r-dns",   agent:"reviewer", task:"Review per ##Acceptance", cwd:"../wt-dns-allowlist"}
+   ])`, context:"fresh", async:true})
+   ```
+
+   On `changes-requested` re-dispatch the worker to the same worktree
+   (branch and worktree are preserved).
 5. When the reviewer records `verdict: approved`, close the task:
 
    ```bash
@@ -127,7 +164,7 @@ review-ready work is visible before merge — no checkout required.
 
    On a merge conflict it aborts and prints rebase guidance for the worker.
    Other in-flight task branches merge independently and conflict-free in
-   `.plan/`.
+   `.plan/`. Close approved tasks sequentially (trunk mutation is serial).
 
 When all children of a story or epic are done, close the parent:
 
@@ -268,6 +305,53 @@ All commands honor `PLANR_TRUNK` (default `main`) and `PLANR_DIR` (default
 **Implementation:** all subcommands are implemented in a single Rust
 binary (`planr`). The binary embeds its own YAML parser and templates — no
 runtime dependencies beyond the binary itself.
+
+## Workflow templates
+
+### Parallel workers (Pattern B)
+
+```javascript
+subagent({workflowScript:`return runs.all([
+  {key:"a", agent:"worker", task:"Implement task-a", cwd:"../wt-task-a"},
+  {key:"b", agent:"worker", task:"Implement task-b", cwd:"../wt-task-b"}
+])`, async:true})
+```
+
+### Parallel reviewers
+
+```javascript
+subagent({workflowScript:`return runs.all([
+  {key:"r-a", agent:"reviewer", task:"Review task-a", cwd:"../wt-task-a"},
+  {key:"r-b", agent:"reviewer", task:"Review task-b", cwd:"../wt-task-b"}
+])`, context:"fresh", async:true})
+```
+
+### Subtree-managed (Pattern A)
+
+```javascript
+subagent({workflowScript:`return runs.all([
+  {key:"a", agent:"worker", task:"Implement feature A", worktree:true},
+  {key:"b", agent:"worker", task:"Implement feature B", worktree:true}
+])`, async:true})
+```
+
+### Sequential waves (depends_on chain)
+
+```javascript
+// Wave 1 — planr claim core && planr claim cfg
+subagent({workflowScript:`return runs.all([
+  {key:"core", agent:"worker", task:"Core lib", cwd:"../wt-core"},
+  {key:"cfg",  agent:"worker", task:"Config",   cwd:"../wt-config"}
+])`, async:true})
+
+// After wave 1 closes: planr close task core && planr close task cfg
+
+// Wave 2
+subagent({workflowScript:`return runs.all([
+  {key:"api", agent:"worker", task:"REST API (depends core+cfg)", cwd:"../wt-api"},
+  {key:"cli", agent:"worker", task:"CLI (depends core+cfg)",     cwd:"../wt-cli"}
+])`, async:true})
+```
 
 ## Installing planr
 
